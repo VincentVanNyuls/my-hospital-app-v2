@@ -1,33 +1,102 @@
-// my-hospital-app/src/app/layout.tsx
-// Esto es un Server Component por defecto, y solo envolverá a los Children.
-// Los Children que usen 'use client' podrán consumir el contexto.
+// src/app/layout.tsx
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { AuthProvider } from './utils/AuthContext'
 
-import { Inter } from 'next/font/google';
-import './globals.css'; // Si tienes un archivo CSS global
+const inter = Inter({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+})
 
-// IMPORTANTE: ¡Ruta CORREGIDA!
-import { AuthProvider } from './utils/AuthContext'; // <--- ¡AQUÍ ESTÁ EL CAMBIO!
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata = {
-  title: 'Hospital LL App',
-  description: 'Aplicación de gestión hospitalaria para docencia CFGS',
-};
+export const metadata: Metadata = {
+  title: 'Hospital Management System',
+  description: 'Sistema profesional de gestión hospitalaria para docencia',
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang="es">
       <body className={inter.className}>
-        <AuthProvider> {/* <--- Aquí envolvemos toda la aplicación */}
-          {children}
+        <AuthProvider>
+          <div className="app-container">
+            {/* Sidebar simplificado integrado */}
+            <aside className="sidebar">
+              <div className="sidebar-header">
+                <div className="hospital-logo">
+                  <div className="logo-icon">🏥</div>
+                  <div className="logo-text">
+                    <h2>HospitalDoc</h2>
+                    <span>Sistema de Gestión</span>
+                  </div>
+                </div>
+              </div>
+              
+              <nav className="sidebar-nav">
+                <a href="/" className="nav-item">
+                  <span className="nav-icon">📊</span>
+                  <span className="nav-text">Dashboard</span>
+                </a>
+                <a href="/pacientes" className="nav-item">
+                  <span className="nav-icon">👥</span>
+                  <span className="nav-text">Pacientes</span>
+                </a>
+                <a href="/urgencias" className="nav-item">
+                  <span className="nav-icon">🚑</span>
+                  <span className="nav-text">Urgencias</span>
+                </a>
+                <a href="/consultas" className="nav-item">
+                  <span className="nav-icon">🩺</span>
+                  <span className="nav-text">Consultas</span>
+                </a>
+                <a href="/hospitalization" className="nav-item">
+                  <span className="nav-icon">🏥</span>
+                  <span className="nav-text">Hospitalización</span>
+                </a>
+              </nav>
+
+              <div className="sidebar-footer">
+                <div className="user-profile">
+                  <div className="user-avatar">👨‍⚕️</div>
+                  <div className="user-info">
+                    <span className="user-name">Dr. Rodríguez</span>
+                    <span className="user-role">Médico General</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <div className="main-content">
+              {/* Header simplificado integrado */}
+              <header className="header">
+                <div className="breadcrumbs">
+                  <span className="breadcrumb-active">Dashboard</span>
+                </div>
+                <div className="header-actions">
+                  <button className="btn-notification">
+                    <span>🔔</span>
+                    <span className="notification-badge">3</span>
+                  </button>
+                  <div className="quick-stats">
+                    <div className="stat-item">
+                      <span className="stat-label">Pacientes Hoy</span>
+                      <span className="stat-value-small">24</span>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div className="content-area">
+                {children}
+              </div>
+            </div>
+          </div>
         </AuthProvider>
       </body>
     </html>
-  );
+  )
 }
-

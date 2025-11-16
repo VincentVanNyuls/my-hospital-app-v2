@@ -1,52 +1,123 @@
-// my-hospital-app/src/app/page.tsx
+// src/app/page.tsx
+import React from 'react'
 
-"use client";
+const stats = [
+  {
+    title: 'Pacientes Hoy',
+    value: '24',
+    change: '+12%',
+    trend: 'up',
+    icon: '👥',
+    color: 'blue'
+  },
+  {
+    title: 'Urgencias Activas',
+    value: '8',
+    change: '-2%',
+    trend: 'down',
+    icon: '🚑',
+    color: 'red'
+  },
+  {
+    title: 'Camas Ocupadas',
+    value: '64%',
+    change: '+5%',
+    trend: 'up',
+    icon: '🏥',
+    color: 'green'
+  },
+  {
+    title: 'Consultas Programadas',
+    value: '18',
+    change: '+3%',
+    trend: 'up',
+    icon: '🩺',
+    color: 'purple'
+  }
+]
 
+export default function Home() {
+  return (
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h1>Panel de Control Hospitalario</h1>
+        <p>Bienvenido al sistema de gestión hospitalaria para docencia</p>
+      </div>
 
-import { useEffect } from 'react';
+      {/* Stats Grid integrado */}
+      <div className="stats-grid">
+        {stats.map((stat, index) => (
+          <div key={index} className="stat-card">
+            <div className="stat-header">
+              <div className={`stat-icon stat-icon-${stat.color}`}>
+                {stat.icon}
+              </div>
+              <div className={`stat-trend stat-trend-${stat.trend}`}>
+                {stat.change}
+              </div>
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">{stat.value}</h3>
+              <p className="stat-title">{stat.title}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="dashboard-content">
+        <div className="content-card">
+          <h2>Actividad Reciente del Hospital</h2>
+          <div className="recent-activity">
+            <div className="activity-item">
+              <span className="activity-icon">🆕</span>
+              <div className="activity-info">
+                <p>Nuevo paciente registrado en Urgencias</p>
+                <span className="activity-time">Hace 5 minutos</span>
+              </div>
+            </div>
+            <div className="activity-item">
+              <span className="activity-icon">📋</span>
+              <div className="activity-info">
+                <p>Consulta completada en Cardiología</p>
+                <span className="activity-time">Hace 15 minutos</span>
+              </div>
+            </div>
+            <div className="activity-item">
+              <span className="activity-icon">🏥</span>
+              <div className="activity-info">
+                <p>Paciente dado de alta de Hospitalización</p>
+                <span className="activity-time">Hace 1 hora</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-import { useRouter } from 'next/navigation';
-
-import { useAuth } from './utils/AuthContext'; // Asegúrate de que la ruta sea correcta
-
-
-export default function RootPage() {
-
-  const { user, loading } = useAuth();
-
-  const router = useRouter();
-
-
-  useEffect(() => {
-
-    // Mientras la autenticación está cargando, no hacemos nada
-
-    if (loading) {
-
-      return;
-
-    }
-
-
-    // Si no hay usuario, redirigir a la página de login
-
-    if (!user) {
-
-      router.push('/login');
-
-    } else {
-
-      // Si hay usuario, redirigir a la nueva página principal de navegación
-
-      router.push('/home');
-
-    }
-
-  }, [user, loading, router]);
-
-
-  // Mostrar un mensaje de carga mientras se determina el estado de autenticación y se redirige
-
-  return <p>Cargando aplicación...</p>;
-
+        <div className="content-card">
+          <h2>Módulos del Sistema</h2>
+          <div className="modules-grid">
+            <a href="/pacientes" className="module-card">
+              <div className="module-icon">👥</div>
+              <h3>Gestión de Pacientes</h3>
+              <p>Administre historiales médicos y datos de pacientes</p>
+            </a>
+            <a href="/urgencias" className="module-card">
+              <div className="module-icon">🚑</div>
+              <h3>Módulo de Urgencias</h3>
+              <p>Triage y gestión de casos de emergencia</p>
+            </a>
+            <a href="/consultas" className="module-card">
+              <div className="module-icon">🩺</div>
+              <h3>Consultas Externas</h3>
+              <p>Agenda y gestión de consultas médicas</p>
+            </a>
+            <a href="/hospitalization" className="module-card">
+              <div className="module-icon">🏥</div>
+              <h3>Hospitalización</h3>
+              <p>Control de camas y pacientes internados</p>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

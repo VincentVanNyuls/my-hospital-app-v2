@@ -1,6 +1,5 @@
 // my-hospital-app/scripts/populateFirestore.mjs
 
-// ✅ CORREGIDO: Usando import en lugar de require
 import admin from 'firebase-admin';
 import serviceAccount from './serviceAccountKey.json' with { type: 'json' };
 import { Timestamp } from 'firebase-admin/firestore';
@@ -20,6 +19,9 @@ const NOMBRES = ["Ana", "Carlos", "María", "Pedro", "Laura", "Javier", "Sofía"
 const APELLIDOS = ["García", "Fernández", "Rodríguez", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Martín", "Jiménez", "Ruiz", "Hernández", "Díaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Alonso", "Gutierrez", "Navarro"];
 const SEXOS = ["Masculino", "Femenino", "Otro"];
 
+// ✅ NUEVO: Array para guardar SIPs generados y evitar duplicados
+const generatedSIPs = new Set();
+
 function getRandomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -29,6 +31,16 @@ function generateDNI() {
   const letras = "TRWAGMYFPDXBNJZSQVHLCKE";
   const letra = letras.charAt(num % 23);
   return `${num}${letra}`;
+}
+
+// ✅ NUEVA FUNCIÓN: Generar SIP único de 7 dígitos
+function generateUniqueSIP() {
+  let sip;
+  do {
+    sip = Math.floor(1000000 + Math.random() * 9000000).toString(); // 7 dígitos
+  } while (generatedSIPs.has(sip));
+  generatedSIPs.add(sip);
+  return sip;
 }
 
 function generateRandomDate(start, end) {
@@ -42,8 +54,8 @@ function generateRandomPaciente(index) {
   const dni = generateDNI();
   const fechaNacimiento = generateRandomDate(new Date(1950, 0, 1), new Date(2005, 11, 31)); // Entre 1950 y 2005
   const sexo = getRandomElement(SEXOS);
+  const sip = generateUniqueSIP(); // ✅ NUEVO: SIP único
   const numHistoriaClinica = `HC-${100000 + index}`; // Simple, pero único para cada paciente
-  const sip = Math.random() > 0.5 ? `SIP-${Math.floor(100000000 + Math.random() * 900000000)}` : null; // Cambiado a null
   const numSegSocial = Math.random() > 0.5 ? `SS-${Math.floor(1000000000 + Math.random() * 9000000000)}` : null; // Cambiado a null
   const telefono = Math.random() > 0.5 ? `+346${Math.floor(10000000 + Math.random() * 90000000)}` : null; // Cambiado a null
   const direccion = Math.random() > 0.5 ? `C/ Ficticia ${Math.floor(1 + Math.random() * 100)}, ${Math.floor(1 + Math.random() * 50)} ${Math.random() > 0.5 ? 'A' : 'B'}` : null; // Cambiado a null
@@ -58,7 +70,7 @@ function generateRandomPaciente(index) {
     DNI_NIE: dni,
     FechaNacimiento: Timestamp.fromDate(fechaNacimiento),
     Sexo: sexo,
-    SIP: sip, // Ahora puede ser null
+    SIP: sip, // ✅ NUEVO: SIP único
     NumSeguridadSocial: numSegSocial, // Ahora puede ser null
     NumHistoriaClinica: numHistoriaClinica,
     Direccion: direccion, // Ahora puede ser null
@@ -110,6 +122,7 @@ async function populateFirestore() {
   }
 
   console.log(`Carga de ${totalAdded} pacientes completada con éxito.`);
+  console.log(`SIPs únicos generados: ${generatedSIPs.size}`);
   process.exit(0); // Termina el script
 }
 

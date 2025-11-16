@@ -21,7 +21,7 @@ interface PacienteData {
   DNI_NIE: string;
   FechaNacimiento: Timestamp;
   Sexo: string;
-  SIP?: string;
+  SIP: string; // ✅ NUEVO CAMPO
   NumSeguridadSocial?: string;
   NumHistoriaClinica: string;
   Direccion?: string;
@@ -40,7 +40,7 @@ interface RawPacienteData {
   DNI_NIE: string;
   FechaNacimiento: Timestamp;
   Sexo: string;
-  SIP?: string;
+  SIP: string; // ✅ NUEVO CAMPO
   NumSeguridadSocial?: string;
   NumHistoriaClinica: string;
   Direccion?: string;
@@ -216,7 +216,7 @@ export default function PacientesListPage() {
           DNI_NIE: rawData.DNI_NIE,
           FechaNacimiento: convertToFirestoreTimestamp(rawData.FechaNacimiento),
           Sexo: rawData.Sexo,
-          SIP: rawData.SIP,
+          SIP: rawData.SIP, // ✅ NUEVO CAMPO
           NumSeguridadSocial: rawData.NumSeguridadSocial,
           NumHistoriaClinica: rawData.NumHistoriaClinica,
           Direccion: rawData.Direccion,
@@ -297,7 +297,7 @@ export default function PacientesListPage() {
           DNI_NIE: rawData.DNI_NIE,
           FechaNacimiento: convertToFirestoreTimestamp(rawData.FechaNacimiento),
           Sexo: rawData.Sexo,
-          SIP: rawData.SIP,
+          SIP: rawData.SIP, // ✅ NUEVO CAMPO
           NumSeguridadSocial: rawData.NumSeguridadSocial,
           NumHistoriaClinica: rawData.NumHistoriaClinica,
           Direccion: rawData.Direccion,
@@ -314,11 +314,11 @@ export default function PacientesListPage() {
         return;
       }
 
-      // Definir los encabezados del CSV en el orden deseado
+      // ✅ ACTUALIZADO: Definir los encabezados del CSV incluyendo SIP
       const headers = [
-        "ID Paciente", "Nombre", "Apellido 1", "Apellido 2", "DNI/NIE",
-        "Fecha Nacimiento", "Sexo", "SIP", "Num Seguridad Social",
-        "Num Historia Clinica", "Direccion", "Codigo Postal", "Telefono",
+        "ID Paciente", "Nombre", "Apellido 1", "Apellido 2", "SIP", "DNI/NIE",
+        "Fecha Nacimiento", "Sexo", "Nº Seguridad Social",
+        "Nº Historia Clinica", "Direccion", "Codigo Postal", "Telefono",
         "Creado Por", "Creado En"
       ];
 
@@ -337,10 +337,10 @@ export default function PacientesListPage() {
           p.Nombre,
           p.Apellido1,
           p.Apellido2 || '', // Si es undefined, usar string vacío
+          p.SIP || '', // ✅ NUEVO CAMPO SIP
           p.DNI_NIE,
           fechaNacimientoStr,
           p.Sexo,
-          p.SIP || '',
           p.NumSeguridadSocial || '',
           p.NumHistoriaClinica,
           p.Direccion || '',
@@ -379,121 +379,178 @@ export default function PacientesListPage() {
     }
   };
 
-  // --- MANEJADOR PARA EXPORTAR A PDF ---
-  const handleExportPDF = async () => {
-    if (loadingAuth || !user) {
-      alert("Debes iniciar sesión para exportar pacientes.");
+ // --- MANEJADOR PARA EXPORTAR A PDF CORREGIDO ---
+const handleExportPDF = async () => {
+  if (loadingAuth || !user) {
+    alert("Debes iniciar sesión para exportar pacientes.");
+    return;
+  }
+
+  setExportingPDF(true);
+  try {
+    const baseQ = buildBaseQuery();
+    const fullSnapshot = await getDocs(query(baseQ));
+    const allFilteredPatients: PacienteData[] = fullSnapshot.docs.map(doc => {
+      const rawData = doc.data() as RawPacienteData;
+      return {
+        id: doc.id,
+        Id_paciente: rawData.Id_paciente,
+        Nombre: rawData.Nombre,
+        Apellido1: rawData.Apellido1,
+        Apellido2: rawData.Apellido2,
+        DNI_NIE: rawData.DNI_NIE,
+        FechaNacimiento: convertToFirestoreTimestamp(rawData.FechaNacimiento),
+        Sexo: rawData.Sexo,
+        SIP: rawData.SIP,
+        NumSeguridadSocial: rawData.NumSeguridadSocial,
+        NumHistoriaClinica: rawData.NumHistoriaClinica,
+        Direccion: rawData.Direccion,
+        CodigoPostal: rawData.CodigoPostal,
+        Telefono: rawData.Telefono,
+        creadoPor: rawData.creadoPor,
+        creadoEn: convertToFirestoreTimestamp(rawData.creadoEn),
+      };
+    });
+
+    if (allFilteredPatients.length === 0) {
+      alert("No hay pacientes para exportar a PDF con los filtros actuales.");
+      setExportingPDF(false);
       return;
     }
 
-    setExportingPDF(true);
-    try {
-      const baseQ = buildBaseQuery();
-      const fullSnapshot = await getDocs(query(baseQ));
-      const allFilteredPatients: PacienteData[] = fullSnapshot.docs.map(doc => {
-        const rawData = doc.data() as RawPacienteData; // ✅ CORREGIDO: Cast a tipo conocido
-        return {
-          id: doc.id,
-          Id_paciente: rawData.Id_paciente,
-          Nombre: rawData.Nombre,
-          Apellido1: rawData.Apellido1,
-          Apellido2: rawData.Apellido2,
-          DNI_NIE: rawData.DNI_NIE,
-          FechaNacimiento: convertToFirestoreTimestamp(rawData.FechaNacimiento),
-          Sexo: rawData.Sexo,
-          SIP: rawData.SIP,
-          NumSeguridadSocial: rawData.NumSeguridadSocial,
-          NumHistoriaClinica: rawData.NumHistoriaClinica,
-          Direccion: rawData.Direccion,
-          CodigoPostal: rawData.CodigoPostal,
-          Telefono: rawData.Telefono,
-          creadoPor: rawData.creadoPor,
-          creadoEn: convertToFirestoreTimestamp(rawData.creadoEn),
-        };
-      });
+    // Crear PDF en ORIENTACIÓN HORIZONTAL
+    const doc = new jsPDF('landscape');
 
-      if (allFilteredPatients.length === 0) {
-        alert("No hay pacientes para exportar a PDF con los filtros actuales.");
-        setExportingPDF(false);
-        return;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    const headerHeight = 25;
+    const footerHeight = 15;
+
+    // Encabezados de la tabla para incluir SIP
+    const tableColumn = [
+      "ID", "Nombre", "Apellido 1", "Apellido 2", "SIP", "DNI/NIE", "Nacimiento",
+      "Sexo", "Nº Seg. Social", "Nº HC", "Dirección", "C.P.", "Teléfono"
+    ];
+    
+    // Mapear los datos de los pacientes para incluir SIP
+    const tableRows = allFilteredPatients.map(p => {
+      const fechaNacimientoStr = p.FechaNacimiento instanceof Timestamp
+        ? p.FechaNacimiento.toDate().toLocaleDateString()
+        : 'N/A';
+      return [
+        p.Id_paciente,
+        p.Nombre,
+        p.Apellido1,
+        p.Apellido2 || '',
+        p.SIP || '',
+        p.DNI_NIE,
+        fechaNacimientoStr,
+        p.Sexo,
+        p.NumSeguridadSocial || '',
+        p.NumHistoriaClinica,
+        p.Direccion || '',
+        p.CodigoPostal || '',
+        p.Telefono || ''
+      ];
+    });
+
+    // ✅ CORRECCIÓN: Usar un número fijo de filas por página
+    const rowsPerPage = 20; // Número fijo que funciona bien en landscape
+    const totalPages = Math.ceil(tableRows.length / rowsPerPage);
+
+    // Función para agregar encabezado a cada página
+    const addHeader = () => {
+      doc.setFontSize(16);
+      doc.setTextColor(40);
+      doc.text("Hospital LL", pageWidth / 2, margin + 8, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Listado de Pacientes", pageWidth / 2, margin + 16, { align: 'center' });
+    };
+
+    // Función para agregar pie de página a cada página
+    const addFooter = (pageNum: number, totalPages: number) => {
+      const currentDateTime = new Date().toLocaleDateString('es-ES', {
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+      
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      
+      // Texto izquierdo: Fecha de extracción
+      doc.text(`Fecha: ${currentDateTime}`, margin, pageHeight - margin - 5);
+      
+      // Texto centro: Información del hospital
+      const hospitalInfo = 'HospitalDoc - Sistema de Gestión';
+      doc.text(hospitalInfo, pageWidth / 2, pageHeight - margin - 5, { align: 'center' });
+      
+      // Texto derecha: Numeración CORRECTA de páginas
+      const pageText = `Página ${pageNum} de ${totalPages}`;
+      doc.text(pageText, pageWidth - margin - doc.getTextWidth(pageText), pageHeight - margin - 5);
+      
+      // Línea separadora
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, pageHeight - margin - 8, pageWidth - margin, pageHeight - margin - 8);
+    };
+
+    // Generar cada página manualmente
+    for (let pageNum = 0; pageNum < totalPages; pageNum++) {
+      if (pageNum > 0) {
+        doc.addPage();
       }
 
-      const doc = new jsPDF(); // Creamos la instancia de jsPDF
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 10;
-      const headerHeight = 25; // Espacio para el encabezado
-      const footerHeight = 15; // Espacio para el pie de página
+      // Agregar encabezado
+      addHeader();
 
-      // Encabezados de la tabla para jspdf-autotable
-      const tableColumn = [
-        "ID", "Nombre", "Apellido 1", "Apellido 2", "DNI/NIE", "Nacimiento",
-        "Sexo", "SIP", "Nº Seg. Social", "Nº HC", "Dirección", "C.P.", "Teléfono"
-      ];
-      
-      // Mapear los datos de los pacientes a un formato compatible con jspdf-autotable
-      const tableRows = allFilteredPatients.map(p => {
-        const fechaNacimientoStr = p.FechaNacimiento instanceof Timestamp
-          ? p.FechaNacimiento.toDate().toLocaleDateString()
-          : 'N/A';
-        return [
-          p.Id_paciente,
-          p.Nombre,
-          p.Apellido1,
-          p.Apellido2 || '',
-          p.DNI_NIE,
-          fechaNacimientoStr,
-          p.Sexo,
-          p.SIP || '',
-          p.NumSeguridadSocial || '',
-          p.NumHistoriaClinica,
-          p.Direccion || '',
-          p.CodigoPostal || '',
-          p.Telefono || ''
-        ];
-      });
+      // Calcular qué filas van en esta página
+      const startRow = pageNum * rowsPerPage;
+      const endRow = Math.min(startRow + rowsPerPage, tableRows.length);
+      const pageData = tableRows.slice(startRow, endRow);
 
-      // Llamar a autoTable como función global
-      autoTable(doc, { // Pasamos la instancia 'doc' y las opciones de la tabla
+      // Generar tabla para esta página
+      autoTable(doc, {
         head: [tableColumn],
-        body: tableRows,
-        startY: margin + headerHeight, // Empezar la tabla después del encabezado
+        body: pageData,
+        startY: margin + headerHeight,
         margin: { top: headerHeight + margin, bottom: footerHeight + margin, left: margin, right: margin },
-        styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-        headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [240, 240, 240] },
-        didDrawPage: function (data: AutoTableData) { // Hook para dibujar encabezado y pie de página en cada página
-          // --- ENCABEZADO ---
-          doc.setFontSize(16);
-          doc.setTextColor(40);
-          doc.text("Hospital LL", pageWidth / 2, margin + 8, { align: 'center' }); // Nombre del hospital
-          
-          doc.setFontSize(10);
-          doc.setTextColor(100);
-          doc.text("Listado de Pacientes", pageWidth / 2, margin + 16, { align: 'center' }); // Subtítulo
-
-          // --- PIE DE PÁGINA ---
-          const currentDateTime = new Date().toLocaleDateString('es-ES', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-          });
-          doc.setFontSize(8);
-          doc.setTextColor(100);
-          doc.text(`Página ${data.pageNumber} de ${doc.internal.pages.length - 1}`, margin, pageHeight - margin - 5); 
-          doc.text(`Fecha de extracción: ${currentDateTime}`, pageWidth - margin, pageHeight - margin - 5, { align: 'right' });
-        }
+        styles: { 
+          fontSize: 7,
+          cellPadding: 2, 
+          overflow: 'linebreak',
+          lineWidth: 0.1
+        },
+        headStyles: { 
+          fillColor: [22, 160, 133], 
+          textColor: 255, 
+          fontStyle: 'bold',
+          lineWidth: 0.1
+        },
+        alternateRowStyles: { 
+          fillColor: [240, 240, 240] 
+        },
+        // Desactivar el didDrawPage interno de autoTable ya que manejamos el footer manualmente
+        didDrawPage: () => {} // Función vacía
       });
 
-      doc.save(`pacientes_listado_${new Date().toISOString().split('T')[0]}.pdf`);
-
-    } catch (error) {
-      console.error("Error al exportar pacientes PDF:", error);
-      alert("Hubo un error al exportar los pacientes a PDF.");
-    } finally {
-      setExportingPDF(false);
+      // Agregar pie de página
+      addFooter(pageNum + 1, totalPages);
     }
-  };
 
+    doc.save(`pacientes_listado_${new Date().toISOString().split('T')[0]}.pdf`);
+
+  } catch (error) {
+    console.error("Error al exportar pacientes PDF:", error);
+    alert("Hubo un error al exportar los pacientes a PDF.");
+  } finally {
+    setExportingPDF(false);
+  }
+};
   // --- RENDERIZADO DEL COMPONENTE ---
   if (loadingAuth) {
     return <p>Verificando autenticación...</p>;
@@ -560,12 +617,45 @@ export default function PacientesListPage() {
       ) : (
         <> 
           <div style={{ overflowX: 'auto', marginTop: '20px', border: '1px solid var(--border-color, #ddd)', borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1300px' }}> 
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}> {/* ✅ Aumentado minWidth por nueva columna */}
               <thead>
-                <tr style={{ backgroundColor: '#f2f2f2' }}><th style={tableHeaderStyle}>ID Paciente</th><th style={tableHeaderStyle}>Nombre</th><th style={tableHeaderStyle}>Apellidos</th><th style={tableHeaderStyle}>DNI/NIE</th><th style={tableHeaderStyle}>Nº HC</th><th style={tableHeaderStyle}>Nacimiento</th><th style={tableHeaderStyle}>Sexo</th><th style={tableHeaderStyle}>SIP</th><th style={tableHeaderStyle}>Nº Seg. Social</th><th style={tableHeaderStyle}>Dirección</th><th style={tableHeaderStyle}>C.P.</th><th style={tableHeaderStyle}>Teléfono</th><th style={tableActionHeaderStyle}>Acciones</th></tr>
+                <tr style={{ backgroundColor: '#f2f2f2' }}>
+                  <th style={tableHeaderStyle}>ID Paciente</th>
+                  <th style={tableHeaderStyle}>Nombre</th>
+                  <th style={tableHeaderStyle}>Apellidos</th>
+                  <th style={tableHeaderStyle}>SIP</th> {/* ✅ NUEVA COLUMNA SIP */}
+                  <th style={tableHeaderStyle}>DNI/NIE</th>
+                  <th style={tableHeaderStyle}>NHC</th> {/* ✅ CAMBIO: "Nº HC" por "NHC" */}
+                  <th style={tableHeaderStyle}>Nacimiento</th>
+                  <th style={tableHeaderStyle}>Sexo</th>
+                  <th style={tableHeaderStyle}>Nº Seg. Social</th>
+                  <th style={tableHeaderStyle}>Dirección</th>
+                  <th style={tableHeaderStyle}>C.P.</th>
+                  <th style={tableHeaderStyle}>Teléfono</th>
+                  <th style={tableActionHeaderStyle}>Acciones</th>
+                </tr>
               </thead>
               <tbody>
-                {pacientes.map((paciente) => (<tr key={paciente.id}><td style={tableCellStyle}>{paciente.Id_paciente}</td><td style={tableCellStyle}>{paciente.Nombre}</td><td style={tableCellStyle}>{paciente.Apellido1} {paciente.Apellido2}</td><td style={tableCellStyle}>{paciente.DNI_NIE}</td><td style={tableCellStyle}>{paciente.NumHistoriaClinica}</td><td style={tableCellStyle}>{paciente.FechaNacimiento instanceof Timestamp ? paciente.FechaNacimiento.toDate().toLocaleDateString() : 'N/A'}</td><td style={tableCellStyle}>{paciente.Sexo}</td><td style={tableCellStyle}>{paciente.SIP || 'N/A'}</td><td style={tableCellStyle}>{paciente.NumSeguridadSocial || 'N/A'}</td><td style={tableCellStyle}>{paciente.Direccion || 'N/A'}</td><td style={tableCellStyle}>{paciente.CodigoPostal || 'N/A'}</td><td style={tableCellStyle}>{paciente.Telefono || 'N/A'}</td><td style={tableActionCellStyle}><button onClick={() => handleSelectPaciente(paciente)} style={{ backgroundColor: 'var(--success-color)', padding: '5px 8px', fontSize: '0.8em', marginRight: '5px', minWidth: '75px' }}>Seleccionar</button><button onClick={() => router.push(`/pacientes/edit/${paciente.id}`)} style={{ backgroundColor: 'var(--primary-color)', padding: '5px 8px', fontSize: '0.8em', minWidth: '60px' }}>Editar</button></td></tr>))}
+                {pacientes.map((paciente) => (
+                  <tr key={paciente.id}>
+                    <td style={tableCellStyle}>{paciente.Id_paciente}</td>
+                    <td style={tableCellStyle}>{paciente.Nombre}</td>
+                    <td style={tableCellStyle}>{paciente.Apellido1} {paciente.Apellido2}</td>
+                    <td style={tableCellStyle}>{paciente.SIP || 'N/A'}</td> {/* ✅ NUEVA COLUMNA SIP */}
+                    <td style={tableCellStyle}>{paciente.DNI_NIE}</td>
+                    <td style={tableCellStyle}>{paciente.NumHistoriaClinica}</td>
+                    <td style={tableCellStyle}>{paciente.FechaNacimiento instanceof Timestamp ? paciente.FechaNacimiento.toDate().toLocaleDateString() : 'N/A'}</td>
+                    <td style={tableCellStyle}>{paciente.Sexo}</td>
+                    <td style={tableCellStyle}>{paciente.NumSeguridadSocial || 'N/A'}</td>
+                    <td style={tableCellStyle}>{paciente.Direccion || 'N/A'}</td>
+                    <td style={tableCellStyle}>{paciente.CodigoPostal || 'N/A'}</td>
+                    <td style={tableCellStyle}>{paciente.Telefono || 'N/A'}</td>
+                    <td style={tableActionCellStyle}>
+                      <button onClick={() => handleSelectPaciente(paciente)} style={{ backgroundColor: 'var(--success-color)', padding: '5px 8px', fontSize: '0.8em', marginRight: '5px', minWidth: '75px' }}>Seleccionar</button>
+                      <button onClick={() => router.push(`/pacientes/edit/${paciente.id}`)} style={{ backgroundColor: 'var(--primary-color)', padding: '5px 8px', fontSize: '0.8em', minWidth: '60px' }}>Editar</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

@@ -17,7 +17,7 @@ interface PacienteData {
   DNI_NIE: string;
   FechaNacimiento: Timestamp;
   Sexo: string;
-  SIP?: string;
+  SIP: string; // ✅ NUEVO CAMPO
   NumSeguridadSocial?: string;
   NumHistoriaClinica: string;
   Direccion?: string;
@@ -36,7 +36,7 @@ interface PacienteFormData {
   DNI_NIE: string;
   FechaNacimiento: string;
   Sexo: string;
-  SIP: string;
+  SIP: string; // ✅ NUEVO CAMPO
   NumSeguridadSocial: string;
   NumHistoriaClinica: string;
   Direccion: string;
@@ -57,7 +57,7 @@ export default function CreatePacientePage() {
     DNI_NIE: '',
     FechaNacimiento: '',
     Sexo: '',
-    SIP: '',
+    SIP: '', // ✅ NUEVO CAMPO
     NumSeguridadSocial: '',
     NumHistoriaClinica: '',
     Direccion: '',
@@ -96,9 +96,15 @@ export default function CreatePacientePage() {
       return;
     }
 
-    // Validación básica de campos requeridos
-    if (!formData.Id_paciente || !formData.Nombre || !formData.Apellido1 || !formData.DNI_NIE || !formData.FechaNacimiento || !formData.Sexo || !formData.NumHistoriaClinica) {
+    // ✅ ACTUALIZADO: Validación que incluye SIP
+    if (!formData.Id_paciente || !formData.Nombre || !formData.Apellido1 || !formData.DNI_NIE || !formData.FechaNacimiento || !formData.Sexo || !formData.SIP || !formData.NumHistoriaClinica) {
       setSubmitError("Por favor, rellena todos los campos requeridos (*).");
+      return;
+    }
+
+    // ✅ NUEVA VALIDACIÓN: SIP debe tener 7 dígitos
+    if (!/^\d{7}$/.test(formData.SIP)) {
+      setSubmitError("El SIP debe tener exactamente 7 dígitos numéricos.");
       return;
     }
 
@@ -107,12 +113,21 @@ export default function CreatePacientePage() {
     try {
       const pacientesRef = collection(db, "pacientes");
 
-      // --- VERIFICAR UNICIDAD DE ID_PACIENTE Y NUM_HISTORIA_CLINICA ---
+      // --- VERIFICAR UNICIDAD DE CAMPOS ---
       // Verificación Id_paciente
       const qIdPaciente = query(pacientesRef, where("Id_paciente", "==", formData.Id_paciente));
       const idPacienteSnapshot = await getDocs(qIdPaciente);
       if (!idPacienteSnapshot.empty) {
         setSubmitError("Error: El ID de paciente ya existe. Por favor, usa uno diferente.");
+        setSubmittingPaciente(false);
+        return;
+      }
+
+      // ✅ NUEVA VERIFICACIÓN: SIP único
+      const qSIP = query(pacientesRef, where("SIP", "==", formData.SIP));
+      const sipSnapshot = await getDocs(qSIP);
+      if (!sipSnapshot.empty) {
+        setSubmitError("Error: El SIP ya existe. Por favor, usa uno diferente.");
         setSubmittingPaciente(false);
         return;
       }
@@ -137,6 +152,7 @@ export default function CreatePacientePage() {
         DNI_NIE: formData.DNI_NIE,
         FechaNacimiento: fechaNacimientoTimestamp,
         Sexo: formData.Sexo,
+        SIP: formData.SIP, // ✅ NUEVO CAMPO
         NumHistoriaClinica: formData.NumHistoriaClinica,
         creadoPor: user.email!,
         creadoEn: Timestamp.now(),
@@ -144,7 +160,6 @@ export default function CreatePacientePage() {
       
       // Agregar campos opcionales solo si tienen valor
       if (formData.Apellido2) newPatientData.Apellido2 = formData.Apellido2;
-      if (formData.SIP) newPatientData.SIP = formData.SIP;
       if (formData.NumSeguridadSocial) newPatientData.NumSeguridadSocial = formData.NumSeguridadSocial;
       if (formData.Direccion) newPatientData.Direccion = formData.Direccion;
       if (formData.CodigoPostal) newPatientData.CodigoPostal = formData.CodigoPostal;
@@ -162,7 +177,7 @@ export default function CreatePacientePage() {
         DNI_NIE: '',
         FechaNacimiento: '',
         Sexo: '',
-        SIP: '',
+        SIP: '', // ✅ NUEVO CAMPO
         NumSeguridadSocial: '',
         NumHistoriaClinica: '',
         Direccion: '',
@@ -197,7 +212,7 @@ export default function CreatePacientePage() {
     DNI_NIE,
     FechaNacimiento,
     Sexo,
-    SIP,
+    SIP, // ✅ NUEVO CAMPO
     NumSeguridadSocial,
     NumHistoriaClinica,
     Direccion,
@@ -246,9 +261,21 @@ export default function CreatePacientePage() {
                 <option value="Otro">Otro</option>
               </select>
             </div>
+            {/* ✅ NUEVO CAMPO SIP */}
             <div>
-              <label htmlFor="SIP">SIP:</label>
-              <input type="text" id="SIP" value={SIP} onChange={handleInputChange} disabled={submittingPaciente} />
+              <label htmlFor="SIP">SIP (*):</label>
+              <input 
+                type="text" 
+                id="SIP" 
+                value={SIP} 
+                onChange={handleInputChange} 
+                required 
+                disabled={submittingPaciente}
+                maxLength={7}
+                pattern="[0-9]{7}"
+                title="El SIP debe tener exactamente 7 dígitos numéricos"
+                placeholder="1234567"
+              />
             </div>
             <div>
               <label htmlFor="NumSeguridadSocial">Nº Seguridad Social:</label>
