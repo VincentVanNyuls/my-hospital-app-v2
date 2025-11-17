@@ -110,7 +110,7 @@ export default function Home() {
               <h3>Consultas Externas</h3>
               <p>Agenda y gestión de consultas médicas</p>
             </a>
-            <a href="/hospitalization" className="module-card">
+            <a href="/hospitalizacion" className="module-card">
               <div className="module-icon">🏥</div>
               <h3>Hospitalización</h3>
               <p>Control de camas y pacientes internados</p>

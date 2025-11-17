@@ -53,7 +53,7 @@ export default function RootLayout({
                   <span className="nav-icon">🩺</span>
                   <span className="nav-text">Consultas</span>
                 </a>
-                <a href="/hospitalization" className="nav-item">
+                <a href="/hospitalizacion" className="nav-item">
                   <span className="nav-icon">🏥</span>
                   <span className="nav-text">Hospitalización</span>
                 </a>
