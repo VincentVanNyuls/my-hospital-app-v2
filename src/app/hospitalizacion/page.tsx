@@ -1,40 +1,107 @@
-// src/app/hospitalizacion/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { HospitalizacionService } from '../utils/hospitalizacionService';
+import { EpisodioHospitalizacion } from '../types/hospitalizacion';
 import Link from 'next/link';
-import { HospitalAdmission } from '../types/hospitalizacion'; // Ruta CORRECTA
-import { HospitalizationService } from '../utils/hospitalizacionService'; // Ruta CORRECTA
+
+const hospitalizacionService = new HospitalizacionService();
 
 export default function HospitalizacionPage() {
-  const [activeAdmissions, setActiveAdmissions] = useState<HospitalAdmission[]>([]);
+  const [episodios, setEpisodios] = useState<EpisodioHospitalizacion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [estadisticas, setEstadisticas] = useState({
+    totalEpisodios: 0,
+    activos: 0,
+    completados: 0,
+    promedioEstancia: 0
+  });
+
+  // Estados para búsqueda - usando propiedades existentes
+  const [filtroPaciente, setFiltroPaciente] = useState('');
+  const [filtroMedico, setFiltroMedico] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
 
   useEffect(() => {
-    loadActiveAdmissions();
+    cargarDatos();
   }, []);
 
-  const loadActiveAdmissions = async () => {
+  const cargarDatos = async () => {
     try {
-      const admissions = await HospitalizationService.getActiveAdmissions();
-      setActiveAdmissions(admissions);
+      setLoading(true);
+      
+      const todosEpisodios = await hospitalizacionService.getEpisodios();
+      
+      if (todosEpisodios && Array.isArray(todosEpisodios)) {
+        const recientes = todosEpisodios
+          .sort((a, b) => new Date(b.fecha_ingreso).getTime() - new Date(a.fecha_ingreso).getTime())
+          .slice(0, 5);
+        
+        setEpisodios(recientes);
+        
+        const activos = todosEpisodios.filter(ep => !ep.fecha_alta).length;
+        const completados = todosEpisodios.filter(ep => ep.fecha_alta).length;
+        
+        const episodiosCompletados = todosEpisodios.filter(ep => ep.fecha_alta);
+        const promedioEstancia = episodiosCompletados.length > 0 
+          ? episodiosCompletados.reduce((sum, ep) => {
+              const ingreso = new Date(ep.fecha_ingreso);
+              const alta = new Date(ep.fecha_alta!);
+              const dias = Math.ceil((alta.getTime() - ingreso.getTime()) / (1000 * 3600 * 24));
+              return sum + dias;
+            }, 0) / episodiosCompletados.length
+          : 0;
+
+        setEstadisticas({
+          totalEpisodios: todosEpisodios.length,
+          activos,
+          completados,
+          promedioEstancia: Math.round(promedioEstancia * 10) / 10
+        });
+      } else {
+        setEpisodios([]);
+        setEstadisticas({
+          totalEpisodios: 0,
+          activos: 0,
+          completados: 0,
+          promedioEstancia: 0
+        });
+      }
     } catch (error) {
-      console.error('Error loading admissions:', error);
+      console.error('Error cargando datos:', error);
+      setEpisodios([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const formatFecha = (fecha: string) => {
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Filtrar episodios basado en los filtros - usando propiedades existentes
+  const episodiosFiltrados = episodios.filter(episodio => {
+    const coincidePaciente = episodio.paciente_id.toLowerCase().includes(filtroPaciente.toLowerCase());
+    const coincideMedico = episodio.medico_tratante.toLowerCase().includes(filtroMedico.toLowerCase());
+    const coincideEstado = 
+      filtroEstado === 'todos' || 
+      (filtroEstado === 'activos' && !episodio.fecha_alta) ||
+      (filtroEstado === 'completados' && episodio.fecha_alta);
+    
+    return coincidePaciente && coincideMedico && coincideEstado;
+  });
+
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse flex space-x-4">
-          <div className="flex-1 space-y-4 py-1">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-            </div>
+      <div className="main-content">
+        <div className="content-area">
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Cargando datos de hospitalización...</p>
           </div>
         </div>
       </div>
@@ -42,172 +109,262 @@ export default function HospitalizacionPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Gestión de Hospitalización</h1>
-        <Link
-          href="/hospitalizacion/admitir"
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          Ingresar Paciente
-        </Link>
-      </div>
+    <div className="main-content">
+      <div className="content-area">
+        {/* Header - Exactamente igual a gestión de pacientes */}
+        <div className="dashboard-header">
+          <h1>Hospitalización</h1>
+          <p>Busque y administre los episodios de hospitalización</p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">Ingresos Activos</h3>
-          <p className="text-3xl font-bold text-blue-600">{activeAdmissions.length}</p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">Cuidados Diarios</h3>
-          <p className="text-3xl font-bold text-green-600">0</p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">Altas del Mes</h3>
-          <p className="text-3xl font-bold text-purple-600">0</p>
-        </div>
-      </div>
+        {/* Tarjetas de Estadísticas - Mismo estilo que gestión de pacientes */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-header">
+              <div className="stat-icon stat-icon-blue">
+                <span>🏥</span>
+              </div>
+              <span className="stat-trend stat-trend-up">+12%</span>
+            </div>
+            <div className="stat-value">{estadisticas.totalEpisodios}</div>
+            <div className="stat-title">Total Episodios</div>
+          </div>
 
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold">Ingresos Activos</h2>
+          <div className="stat-card">
+            <div className="stat-header">
+              <div className="stat-icon stat-icon-green">
+                <span>🛌</span>
+              </div>
+              <span className="stat-trend stat-trend-up">+5%</span>
+            </div>
+            <div className="stat-value">{estadisticas.activos}</div>
+            <div className="stat-title">Pacientes Activos</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <div className="stat-icon stat-icon-purple">
+                <span>✅</span>
+              </div>
+              <span className="stat-trend stat-trend-up">+8%</span>
+            </div>
+            <div className="stat-value">{estadisticas.completados}</div>
+            <div className="stat-title">Altas Médicas</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <div className="stat-icon stat-icon-red">
+                <span>📅</span>
+              </div>
+              <span className="stat-trend stat-trend-down">-2%</span>
+            </div>
+            <div className="stat-value">{estadisticas.promedioEstancia}</div>
+            <div className="stat-title">Días Promedio</div>
+          </div>
         </div>
-        
-        {activeAdmissions.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            No hay ingresos activos en este momento
-            <div className="mt-4">
-              <Link
-                href="/hospitalizacion/admitir"
-                className="text-blue-500 hover:text-blue-700 underline"
+
+        {/* Sección de Búsqueda - Mismo diseño que gestión de pacientes */}
+        <div className="content-card">
+          <h2>Buscar Episodio</h2>
+          
+          <div className="search-grid">
+            {/* Paciente ID */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paciente ID
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: P-001"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={filtroPaciente}
+                onChange={(e) => setFiltroPaciente(e.target.value)}
+              />
+            </div>
+
+            {/* Médico */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Médico
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Dr. García"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={filtroMedico}
+                onChange={(e) => setFiltroMedico(e.target.value)}
+              />
+            </div>
+
+            {/* Estado */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado
+              </label>
+              <select
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
               >
-                Ingresar primer paciente
-              </Link>
+                <option value="todos">Todos los episodios</option>
+                <option value="activos">Solo activos</option>
+                <option value="completados">Solo completados</option>
+              </select>
+            </div>
+
+            {/* Botón de búsqueda */}
+            <div className="search-actions">
+              <div className="action-buttons">
+                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                  🔍 Buscar Episodios
+                </button>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Paciente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Habitación
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Diagnóstico
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha Ingreso
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {activeAdmissions.map((admission) => (
-                  <tr key={admission.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {admission.patientId}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        ID: {admission.patientId}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {admission.room} - Cama {admission.bed}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {admission.service}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs">
-                        {admission.diagnosis}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {new Date(admission.admissionDate).toLocaleDateString('es-ES')}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(admission.admissionDate).toLocaleTimeString('es-ES', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Link
-                          href={`/hospitalizacion/${admission.id}`}
-                          className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded border border-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          Ver
-                        </Link>
-                        <Link
-                          href={`/hospitalizacion/${admission.id}/enfermeria`}
-                          className="text-green-600 hover:text-green-900 px-3 py-1 rounded border border-green-600 hover:bg-green-50 transition-colors"
-                        >
-                          Cuidados
-                        </Link>
-                        <Link
-                          href={`/hospitalizacion/${admission.id}/medico`}
-                          className="text-purple-600 hover:text-purple-900 px-3 py-1 rounded border border-purple-600 hover:bg-purple-50 transition-colors"
-                        >
-                          Médico
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </div>
 
-      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Acciones Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link
-            href="/hospitalizacion/admitir"
-            className="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg text-center transition-colors"
-          >
-            <div className="font-semibold">Nuevo Ingreso</div>
-            <div className="text-sm opacity-90">Ingresar paciente</div>
-          </Link>
-          
-          <Link
-            href="/hospitalizacion/altas"
-            className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg text-center transition-colors"
-          >
-            <div className="font-semibold">Gestión de Altas</div>
-            <div className="text-sm opacity-90">Dar altas médicas</div>
-          </Link>
-          
-          <Link
-            href="/hospitalizacion/reportes"
-            className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg text-center transition-colors"
-          >
-            <div className="font-semibold">Reportes</div>
-            <div className="text-sm opacity-90">Estadísticas e informes</div>
-          </Link>
-          
-          <Link
-            href="/hospitalizacion/camas"
-            className="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg text-center transition-colors"
-          >
-            <div className="font-semibold">Gestión de Camas</div>
-            <div className="text-sm opacity-90">Estado de habitaciones</div>
-          </Link>
+        {/* Botones de Acción - Mismo estilo que gestión de pacientes */}
+        <div className="content-card">
+          <h2>Acciones Rápidas</h2>
+          <div className="action-buttons">
+            <Link
+              href="/hospitalizacion/admision"
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              ➕ Crear Nuevo Ingreso
+            </Link>
+            <Link
+              href="/hospitalizacion/episodios"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              📋 Ver Todos los Episodios
+            </Link>
+            <Link
+              href="/pacientes"
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            >
+              👥 Gestionar Pacientes
+            </Link>
+          </div>
+        </div>
+
+        {/* Lista de Episodios Recientes - Mismo estilo que gestión de pacientes */}
+        <div className="content-card">
+          <div className="flex justify-between items-center mb-6">
+            <h2>Episodios Recientes</h2>
+            <span className="text-sm text-gray-500">
+              {episodiosFiltrados.length} de {episodios.length} episodios
+            </span>
+          </div>
+
+          {episodiosFiltrados.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🏥</div>
+              <h3>No se encontraron episodios</h3>
+              <p>
+                {filtroPaciente || filtroMedico || filtroEstado !== 'todos' 
+                  ? 'Intenta ajustar los filtros de búsqueda' 
+                  : 'No hay episodios de hospitalización recientes'
+                }
+              </p>
+              <Link
+                href="/hospitalizacion/admision"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium mt-4 inline-block"
+              >
+                ➕ Crear Nuevo Ingreso
+              </Link>
+            </div>
+          ) : (
+            <div className="results-container">
+              {episodiosFiltrados.map((episodio) => (
+                <div key={episodio.id} className="patient-result-card">
+                  <div className="patient-info">
+                    <h4>Paciente: {episodio.paciente_id}</h4>
+                    <div className="patient-details">
+                      <span>👨‍⚕️ {episodio.medico_tratante}</span>
+                      <span>🏥 {episodio.departamento}</span>
+                      <span>📅 {formatFecha(episodio.fecha_ingreso)}</span>
+                      {episodio.habitacion && (
+                        <span>🚪 Hab. {episodio.habitacion}-{episodio.cama}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {episodio.diagnostico_inicial}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      episodio.fecha_alta 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {episodio.fecha_alta ? 'Completado' : 'Activo'}
+                    </span>
+                    
+                    <Link
+                      href={`/hospitalizacion/episodios/${episodio.id}`}
+                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm font-medium"
+                    >
+                      Ver Detalles
+                    </Link>
+                    
+                    {!episodio.fecha_alta && (
+                      <Link
+                        href={`/hospitalizacion/alta/${episodio.id}`}
+                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm font-medium"
+                      >
+                        Dar Alta
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Footer con enlace para ver todos */}
+          {episodiosFiltrados.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+              <Link
+                href="/hospitalizacion/episodios"
+                className="text-blue-600 hover:text-blue-800 font-medium text-lg"
+              >
+                Ver todos los episodios →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Módulos Adicionales - Como en gestión de pacientes */}
+        <div className="content-card">
+          <h2>Módulos de Hospitalización</h2>
+          <div className="modules-grid">
+            <Link href="/hospitalizacion/episodios" className="module-card">
+              <div className="module-icon">📋</div>
+              <h3>Gestión de Episodios</h3>
+              <p>Administra todos los episodios de hospitalización activos y completados</p>
+            </Link>
+
+            <Link href="/hospitalizacion/admision" className="module-card">
+              <div className="module-icon">➕</div>
+              <h3>Admisión de Pacientes</h3>
+              <p>Registra nuevos ingresos hospitalarios y asigna recursos</p>
+            </Link>
+
+            <Link href="/hospitalizacion/altas" className="module-card">
+              <div className="module-icon">📄</div>
+              <h3>Informes de Alta</h3>
+              <p>Genera y gestiona informes de alta médica</p>
+            </Link>
+
+            <Link href="/hospitalizacion/reportes" className="module-card">
+              <div className="module-icon">📊</div>
+              <h3>Reportes y Estadísticas</h3>
+              <p>Analiza datos de hospitalización y métricas</p>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

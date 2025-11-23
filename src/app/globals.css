@@ -655,3 +655,26 @@ body {
     gap: 0.5rem;
   }
 }
+/* En tu archivo CSS global */
+@media print {
+  @page {
+    margin: 1cm;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+  
+  .print\\:border-0 {
+    border: none !important;
+  }
+  
+  .print\\:p-0 {
+    padding: 0 !important;
+  }
+  
+  .print\\:max-w-none {
+    max-width: none !important;
+  }
+}

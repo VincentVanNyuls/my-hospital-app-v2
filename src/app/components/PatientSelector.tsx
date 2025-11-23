@@ -191,20 +191,20 @@ export default function PatientSelector({ onPatientSelect, selectedPatientId }: 
         </div>
       )}
 
-      {/* Estadísticas rápidas */}
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-        <div className="text-sm text-blue-700">
-          <strong>Total de pacientes en sistema:</strong> {patients.length}
-          {searchTerm && (
-            <span className="ml-2">
-              • <strong>Encontrados:</strong> {filteredPatients.length}
-            </span>
-          )}
-        </div>
-        <div className="text-xs text-blue-600 mt-1">
-          💡 <strong>Consejo:</strong> Busca por nombre, apellidos, DNI, SIP o número de historia clínica
-        </div>
-      </div>
+   {/* Estadísticas rápidas */}
+<div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+  <div className="text-sm text-blue-700">
+    <strong>Total de pacientes en sistema:</strong> {patients.length}
+    {searchTerm && (
+      <span className="ml-2">
+        • <strong>Encontrados:</strong> {filteredPatients.length}
+      </span>
+    )}
+  </div>
+  <div className="text-xs text-blue-600 mt-1">
+    💡 <strong>Consejo:</strong> Busca por nombre, apellidos, DNI, SIP o número de historia clínica
+  </div>
+</div>
     </div>
   );
 }

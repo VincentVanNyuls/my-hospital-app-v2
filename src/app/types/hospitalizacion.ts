@@ -1,108 +1,120 @@
-// src/app/types/hospitalizacion.ts
-import { PacienteData } from './paciente';
-
-export type AdmissionType = 'programada' | 'urgente';
-export type AdmissionStatus = 'active' | 'discharged' | 'transferred';
-export type DischargeType = 'alta_voluntaria' | 'alta_medica' | 'fallecimiento' | 'traslado';
-
-export interface HospitalAdmission {
+// src/types/hospitalizacion.ts
+export interface EpisodioHospitalizacion {
   id: string;
-  patientId: string;
-  admissionDate: Date | string;
-  admissionType: AdmissionType;
-  service: string;
-  room: string;
-  bed: string;
-  diagnosis: string;
-  doctorId: string;
-  nurseId: string;
-  status: AdmissionStatus;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
+  paciente_id: string;
+  fecha_ingreso: string;
+  fecha_alta?: string;
+  motivo_ingreso: string;
+  diagnostico_inicial: string;
+  diagnostico_final?: string;
+  medico_tratante: string;
+  departamento: string;
+  habitacion: string;
+  cama: string;
+  
+  // Datos clínicos
+  antecedentes_medicos: string;
+  medicamentos_actuales: string[];
+  alergias: string[];
+  signos_vitales: SignosVitales[];
+  resultados_laboratorio: ResultadoLaboratorio[];
+  estudios_imagen: EstudioImagen[];
+  
+  // Evolución
+  notas_evolucion: NotaEvolucion[];
+  tratamientos: Tratamiento[];
+  procedimientos: Procedimiento[];
+  
+  // Alta médica
+  resumen_alta?: string;
+  condicion_alta?: string;
+  instrucciones_seguimiento?: string;
+  medicamentos_alta: string[];
 }
 
-export interface HospitalAdmissionWithPatient extends HospitalAdmission {
-  patientData?: PacienteData;
+export interface SignosVitales {
+  fecha: string;
+  presion_arterial: string;
+  frecuencia_cardiaca: number;
+  frecuencia_respiratoria: number;
+  temperatura: number;
+  saturacion_oxigeno: number;
 }
 
-export interface VitalSigns {
-  bloodPressure: string;
-  heartRate: string;
-  respiratoryRate: string;
-  temperature: string;
-  oxygenSaturation: string;
+// CORREGIDO: Cambiar nombres para que coincidan con el servicio
+export interface ResultadoLaboratorio {
+  fecha: string;
+  tipo: string;                    // Cambiado de 'nombre_prueba'
+  resultado: string;              // Cambiado de 'resultados'
+  unidades?: string;
+  valores_referencia?: string;    // Cambiado de 'rango_referencia'
+  observaciones?: string;         // Cambiado de 'interpretacion'
 }
 
-export interface MedicationAdministered {
-  medicationId: string;
-  name: string;
-  dosage: string;
-  route: string;
-  time: Date | string;
+// CORREGIDO: Cambiar nombres para que coincidan con el servicio
+export interface EstudioImagen {
+  fecha: string;
+  tipo: string;                   // Cambiado de 'tipo_estudio'
+  area_estudiada: string;         // Nuevo campo requerido
+  hallazgos: string;
+  interpretacion: string;         // Cambiado de 'impresion'
+  medico_radiologo: string;       // Nuevo campo requerido
 }
 
-export interface NursingCare {
-  id: string;
-  admissionId: string;
-  dateTime: Date | string;
-  nurseId: string;
-  vitalSigns: VitalSigns;
-  observations: string;
-  careProvided: string[];
-  medicationsAdministered: MedicationAdministered[];
+export interface NotaEvolucion {
+  fecha: string;
+  medico: string;
+  subjetivo: string;
+  objetivo: string;
+  evaluacion: string;
+  plan: string;
 }
 
-export interface Prescription {
-  medicationId: string;
-  name: string;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  instructions: string;
+// CORREGIDO: Cambiar nombres para que coincidan con el servicio
+export interface Tratamiento {
+  fecha: string;
+  tipo: string;                   // Cambiado de 'medicamento'
+  descripcion: string;            // Cambiado de combinación de campos
+  dosis?: string;
+  frecuencia?: string;
+  duracion?: string;
+  medico_prescriptor: string;     // Nuevo campo requerido
 }
 
-export interface MedicalCare {
-  id: string;
-  admissionId: string;
-  dateTime: Date | string;
-  doctorId: string;
-  assessment: string;
-  diagnosis: string;
-  treatmentPlan: string;
-  prescriptions: Prescription[];
-  procedures: string[];
+// CORREGIDO: Cambiar nombres para que coincidan con el servicio
+export interface Procedimiento {
+  fecha: string;
+  tipo: string;                   // Cambiado de 'nombre_procedimiento'
+  descripcion: string;            // Cambiado de 'hallazgos'
+  medico_realizador: string;      // Cambiado de 'medico'
+  anestesia?: string;
+  complicaciones?: string;
 }
 
-export interface Discharge {
-  id: string;
-  admissionId: string;
-  dischargeDate: Date | string;
-  dischargeType: DischargeType;
-  finalDiagnosis: string;
-  treatmentRecommendations: string;
-  followUpInstructions: string;
-  dischargeSummary: string;
-}
-
-export interface AdmissionFormData {
-  patientId: string;
-  admissionType: AdmissionType;
-  service: string;
-  room: string;
-  bed: string;
-  diagnosis: string;
-  doctorId: string;
-  nurseId: string;
-}
-
-export interface AdmissionFormDataWithPatient {
-  patientId: string;
-  admissionType: AdmissionType;
-  service: string;
-  room: string;
-  bed: string;
-  diagnosis: string;
-  doctorId: string;
-  nurseId: string;
-  patientData?: PacienteData;
+export interface InformeAlta {
+  nombre_hospital: string;
+  titulo_informe: string;
+  info_paciente: {
+    nombre: string;
+    id: string;
+    edad: number;
+    genero: string;
+  };
+  info_episodio: {
+    fecha_ingreso: string;
+    fecha_alta: string;
+    dias_estancia: number;
+    medico_tratante: string;
+    departamento: string;
+  };
+  info_clinica: {
+    motivo_ingreso: string;
+    diagnostico_inicial: string;
+    diagnostico_final: string;
+    procedimientos_realizados: Procedimiento[];
+    evolucion_hospitalaria: string;
+    condicion_alta: string;
+    medicamentos_alta: string[];
+    instrucciones_seguimiento: string;
+  };
 }

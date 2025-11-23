@@ -34,3 +34,26 @@ export interface PacienteFormData {
   CodigoPostal: string;
   Telefono: string;
 }
+export interface Paciente {
+  id: string;
+  nombre: string;
+  apellido: string;
+  fechaNacimiento: Date;
+  genero: 'Masculino' | 'Femenino' | 'Otro';
+  documentoIdentidad: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+  // Agrega más campos según necesites
+}
+
+export interface PacienteCreate {
+  nombre: string;
+  apellido: string;
+  fechaNacimiento: Date;
+  genero: string;
+  documentoIdentidad: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+}

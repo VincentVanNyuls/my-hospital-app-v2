@@ -3,8 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../utils/AuthContext';
-import { db } from '../utils/firebase';
+import Link from 'next/link'; // Importar Link
+import { useAuth } from '../utils/AuthContext'; // Ruta corregida
+import { db } from '../utils/firebase'; // Ruta corregida
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 interface PacienteData {
@@ -285,12 +286,21 @@ export default function PacientesPage() {
                       <span>NHC: <strong>{paciente.NumHistoriaClinica}</strong></span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleSelectPaciente(paciente)}
-                    className="btn btn-success btn-sm"
-                  >
-                    Seleccionar
-                  </button>
+                  <div className="patient-actions">
+                    <button 
+                      onClick={() => handleSelectPaciente(paciente)}
+                      className="btn btn-success btn-sm"
+                    >
+                      Seleccionar
+                    </button>
+                    {/* Botón de Hospitalizar agregado aquí */}
+                    <Link
+                      href={`/hospitalizacion/admision?pacienteId=${paciente.id}`}
+                      className="btn btn-primary btn-sm"
+                    >
+                      Hospitalizar
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>
@@ -316,7 +326,7 @@ export default function PacientesPage() {
 
         .page-header {
           display: flex;
-          justify-content: between;
+          justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 2rem;
           gap: 1rem;
@@ -396,9 +406,8 @@ export default function PacientesPage() {
 
         .form-group input:focus {
           outline: none;
-          ring: 2px;
-          ring-color: #3b82f6;
           border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
 
         .form-group input::placeholder {
@@ -430,6 +439,9 @@ export default function PacientesPage() {
           cursor: pointer;
           transition: all 0.2s;
           font-size: 0.875rem;
+          text-decoration: none;
+          display: inline-block;
+          text-align: center;
         }
 
         .btn:disabled {
@@ -487,7 +499,7 @@ export default function PacientesPage() {
 
         .patient-result-card {
           display: flex;
-          justify-content: between;
+          justify-content: space-between;
           align-items: center;
           padding: 1rem;
           border: 1px solid #e5e7eb;
@@ -510,6 +522,11 @@ export default function PacientesPage() {
 
         .patient-details strong {
           color: #374151;
+        }
+
+        .patient-actions {
+          display: flex;
+          gap: 0.5rem;
         }
 
         /* Estados */
@@ -574,6 +591,11 @@ export default function PacientesPage() {
             flex-direction: column;
             align-items: flex-start;
             gap: 1rem;
+          }
+
+          .patient-actions {
+            width: 100%;
+            justify-content: flex-start;
           }
         }
       `}</style>
