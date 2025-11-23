@@ -107,7 +107,7 @@ export default function InformeAltaPDF({ informe }: InformeAltaPDFProps) {
               <ul className="ml-8 list-disc">
                 {informe.info_clinica.procedimientos_realizados.map((proc, index) => (
                   <li key={index}>
-                    {proc.nombre_procedimiento} - {formatearFecha(proc.fecha)}
+                    {proc.tipo} - {proc.descripcion} - {formatearFecha(proc.fecha)}
                   </li>
                 ))}
               </ul>

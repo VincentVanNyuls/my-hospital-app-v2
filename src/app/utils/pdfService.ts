@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { UrgenciaData, PacienteData } from './types'; // ← Cambiar aquí
+import { UrgenciaData, PacienteData } from './types';
 
 export class PDFService {
   static async generarInformeUrgencia(
@@ -62,6 +62,7 @@ export class PDFService {
       `Fecha Entrada: ${this.formatFecha(urgencia.Fecha_entrada)}`,
       `Hora Entrada: ${urgencia.Hora_Entrada}`,
       `Cobertura SS: ${urgencia.Cobertura_SS}`,
+      `Tipo Acreditación: ${urgencia.Tipo_Acreditacion}`,
       `Especialidad: ${urgencia.Especialidad}`,
       `Médico Responsable: ${urgencia.Medico_responsable}`,
       `Estado: ${urgencia.Estado.toUpperCase()}`
@@ -136,6 +137,151 @@ export class PDFService {
       
       pdf.text(`Duración total de la atención: ${duracion}`, margin, yPosition);
       yPosition += 10;
+    }
+
+    // Pie de página
+    this.agregarPiePagina(pdf, pageWidth);
+
+    return pdf;
+  }
+
+  static async generarInformeAlta(episodio: any): Promise<jsPDF> {
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPosition = margin;
+
+    // Configuración inicial
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(20);
+    pdf.setTextColor(0, 51, 102);
+
+    // Encabezado
+    pdf.text('INFORME DE ALTA HOSPITALARIA', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 15;
+
+    // Línea separadora
+    pdf.setDrawColor(0, 51, 102);
+    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
+
+    // Información del hospital
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('HOSPITAL DOCENCIA SIMULACIÓN', margin, yPosition);
+    pdf.text('Servicio de Hospitalización', pageWidth - margin, yPosition, { align: 'right' });
+    yPosition += 20;
+
+    // Información del paciente
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 51, 102);
+    pdf.text('INFORMACIÓN DEL PACIENTE', margin, yPosition);
+    yPosition += 10;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+
+    const infoPaciente = [
+      `Nombre: ${episodio.paciente_nombre || 'No disponible'}`,
+      `ID Paciente: ${episodio.paciente_id || 'No disponible'}`,
+      `Edad: ${episodio.paciente_edad || 'No disponible'} años`,
+      `Género: ${episodio.paciente_genero || 'No disponible'}`
+    ];
+
+    yPosition = this.agregarLineas(pdf, infoPaciente, margin, yPosition, 6);
+    yPosition += 10;
+
+    // Información del episodio
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 51, 102);
+    pdf.text('INFORMACIÓN DEL EPISODIO', margin, yPosition);
+    yPosition += 10;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+
+    const infoEpisodio = [
+      `Fecha Ingreso: ${this.formatFecha(episodio.fecha_ingreso)}`,
+      `Fecha Alta: ${this.formatFecha(episodio.fecha_alta)}`,
+      `Médico Tratante: ${episodio.medico_tratante || 'No disponible'}`,
+      `Departamento: ${episodio.departamento || 'No disponible'}`,
+      `Habitación: ${episodio.habitacion || 'No disponible'}`,
+      `Cama: ${episodio.cama || 'No disponible'}`
+    ];
+
+    yPosition = this.agregarLineas(pdf, infoEpisodio, margin, yPosition, 6);
+    yPosition += 10;
+
+    // Diagnósticos
+    if (episodio.diagnostico_inicial || episodio.diagnostico_final) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 51, 102);
+      pdf.text('DIAGNÓSTICOS', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+
+      const diagnosticos = [];
+      if (episodio.diagnostico_inicial) {
+        diagnosticos.push(`Diagnóstico Inicial: ${episodio.diagnostico_inicial}`);
+      }
+      if (episodio.diagnostico_final) {
+        diagnosticos.push(`Diagnóstico Final: ${episodio.diagnostico_final}`);
+      }
+
+      yPosition = this.agregarLineas(pdf, diagnosticos, margin, yPosition, 6);
+      yPosition += 10;
+    }
+
+    // Resumen y seguimiento
+    if (episodio.resumen_alta || episodio.instrucciones_seguimiento) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 51, 102);
+      pdf.text('RESUMEN Y SEGUIMIENTO', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+
+      if (episodio.resumen_alta) {
+        const resumenLines = this.splitTextToSize(pdf, `Resumen del Alta: ${episodio.resumen_alta}`, pageWidth - 2 * margin);
+        yPosition = this.agregarLineas(pdf, resumenLines, margin, yPosition, 5);
+        yPosition += 5;
+      }
+
+      if (episodio.instrucciones_seguimiento) {
+        const seguimientoLines = this.splitTextToSize(pdf, `Instrucciones: ${episodio.instrucciones_seguimiento}`, pageWidth - 2 * margin);
+        yPosition = this.agregarLineas(pdf, seguimientoLines, margin, yPosition, 5);
+        yPosition += 5;
+      }
+    }
+
+    // Medicamentos al alta
+    if (episodio.medicamentos_alta && episodio.medicamentos_alta.length > 0) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 51, 102);
+      pdf.text('MEDICAMENTOS AL ALTA', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+
+      episodio.medicamentos_alta.forEach((medicamento: string, index: number) => {
+        if (yPosition > 270) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(`${index + 1}. ${medicamento}`, margin, yPosition);
+        yPosition += 5;
+      });
+      yPosition += 5;
     }
 
     // Pie de página
@@ -243,6 +389,16 @@ export class PDFService {
           hour: '2-digit',
           minute: '2-digit'
         });
+      } else if (typeof fecha === 'string') {
+        // Es un string ISO
+        const dateObj = new Date(fecha);
+        return dateObj.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       }
       return 'Fecha no disponible';
     } catch (error) {
@@ -301,6 +457,18 @@ export class PDFService {
       pdf.save(fileName);
     } catch (error) {
       console.error('Error generando PDF de urgencia:', error);
+      throw error;
+    }
+  }
+
+  // Método para descargar informe de alta
+  static async generarYDescargarInformeAlta(episodio: any): Promise<void> {
+    try {
+      const pdf = await this.generarInformeAlta(episodio);
+      const fileName = `Alta_${episodio.paciente_id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Error generando PDF de alta:', error);
       throw error;
     }
   }
