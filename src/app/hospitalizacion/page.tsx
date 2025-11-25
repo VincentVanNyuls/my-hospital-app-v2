@@ -1,26 +1,34 @@
+// src/app/hospitalizacion/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { HospitalizacionService } from '../utils/hospitalizacionService';
 import { EpisodioHospitalizacion } from '../types/hospitalizacion';
-import Link from 'next/link';
 
 const hospitalizacionService = new HospitalizacionService();
 
 export default function HospitalizacionPage() {
+  const router = useRouter();
+  
   const [episodios, setEpisodios] = useState<EpisodioHospitalizacion[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para búsqueda - igual que en pacientes
+  const [searchPacienteId, setSearchPacienteId] = useState('');
+  const [searchMedico, setSearchMedico] = useState('');
+  const [searchEstado, setSearchEstado] = useState('todos');
+  const [searchResults, setSearchResults] = useState<EpisodioHospitalizacion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const [estadisticas, setEstadisticas] = useState({
     totalEpisodios: 0,
     activos: 0,
     completados: 0,
     promedioEstancia: 0
   });
-
-  // Estados para búsqueda - usando propiedades existentes
-  const [filtroPaciente, setFiltroPaciente] = useState('');
-  const [filtroMedico, setFiltroMedico] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('todos');
 
   useEffect(() => {
     cargarDatos();
@@ -29,7 +37,6 @@ export default function HospitalizacionPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      
       const todosEpisodios = await hospitalizacionService.getEpisodios();
       
       if (todosEpisodios && Array.isArray(todosEpisodios)) {
@@ -38,6 +45,7 @@ export default function HospitalizacionPage() {
           .slice(0, 5);
         
         setEpisodios(recientes);
+        setSearchResults(recientes);
         
         const activos = todosEpisodios.filter(ep => !ep.fecha_alta).length;
         const completados = todosEpisodios.filter(ep => ep.fecha_alta).length;
@@ -60,6 +68,7 @@ export default function HospitalizacionPage() {
         });
       } else {
         setEpisodios([]);
+        setSearchResults([]);
         setEstadisticas({
           totalEpisodios: 0,
           activos: 0,
@@ -70,8 +79,66 @@ export default function HospitalizacionPage() {
     } catch (error) {
       console.error('Error cargando datos:', error);
       setEpisodios([]);
+      setSearchResults([]);
+      setSearchError('Error al cargar los datos de hospitalización');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { id, value } = e.target;
+    switch (id) {
+      case 'searchPacienteId':
+        setSearchPacienteId(value);
+        break;
+      case 'searchMedico':
+        setSearchMedico(value);
+        break;
+      case 'searchEstado':
+        setSearchEstado(value);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSearchEpisodios = async () => {
+    setSearchError(null);
+    setSearching(true);
+
+    try {
+      let resultadosFiltrados = [...episodios];
+
+      if (searchPacienteId.trim()) {
+        resultadosFiltrados = resultadosFiltrados.filter(ep => 
+          ep.paciente_id.toLowerCase().includes(searchPacienteId.toLowerCase())
+        );
+      }
+
+      if (searchMedico.trim()) {
+        resultadosFiltrados = resultadosFiltrados.filter(ep => 
+          ep.medico_tratante.toLowerCase().includes(searchMedico.toLowerCase())
+        );
+      }
+
+      if (searchEstado !== 'todos') {
+        resultadosFiltrados = resultadosFiltrados.filter(ep => 
+          searchEstado === 'activos' ? !ep.fecha_alta : ep.fecha_alta
+        );
+      }
+
+      setSearchResults(resultadosFiltrados);
+
+      if (resultadosFiltrados.length === 0) {
+        setSearchError("No se encontraron episodios con los criterios especificados.");
+      }
+
+    } catch (err: unknown) {
+      console.error("Error al buscar episodios:", err);
+      setSearchError('Ocurrió un error al buscar episodios');
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -83,18 +150,6 @@ export default function HospitalizacionPage() {
     });
   };
 
-  // Filtrar episodios basado en los filtros - usando propiedades existentes
-  const episodiosFiltrados = episodios.filter(episodio => {
-    const coincidePaciente = episodio.paciente_id.toLowerCase().includes(filtroPaciente.toLowerCase());
-    const coincideMedico = episodio.medico_tratante.toLowerCase().includes(filtroMedico.toLowerCase());
-    const coincideEstado = 
-      filtroEstado === 'todos' || 
-      (filtroEstado === 'activos' && !episodio.fecha_alta) ||
-      (filtroEstado === 'completados' && episodio.fecha_alta);
-    
-    return coincidePaciente && coincideMedico && coincideEstado;
-  });
-
   if (loading) {
     return (
       <div className="loading-container">
@@ -105,263 +160,645 @@ export default function HospitalizacionPage() {
   }
 
   return (
-    // SOLO este div - ELIMINA los contenedores duplicados
-    <div className="hospitalizacion-content">
-      {/* Header - Exactamente igual a gestión de pacientes */}
-      <div className="dashboard-header">
-        <h1>Hospitalización</h1>
-        <p>Busque y administre los episodios de hospitalización</p>
-      </div>
-
-      {/* Tarjetas de Estadísticas - Mismo estilo que gestión de pacientes */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon stat-icon-blue">
-              <span>🏥</span>
-            </div>
-            <span className="stat-trend stat-trend-up">+12%</span>
-          </div>
-          <div className="stat-value">{estadisticas.totalEpisodios}</div>
-          <div className="stat-title">Total Episodios</div>
+    <div className="page-container">
+      {/* Header IDÉNTICO a gestión de pacientes */}
+      <div className="page-header">
+        <div className="header-content">
+          <h1>Gestión de Hospitalización</h1>
+          <p>Busque y administre los episodios de hospitalización del hospital</p>
         </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon stat-icon-green">
-              <span>🛌</span>
-            </div>
-            <span className="stat-trend stat-trend-up">+5%</span>
-          </div>
-          <div className="stat-value">{estadisticas.activos}</div>
-          <div className="stat-title">Pacientes Activos</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon stat-icon-purple">
-              <span>✅</span>
-            </div>
-            <span className="stat-trend stat-trend-up">+8%</span>
-          </div>
-          <div className="stat-value">{estadisticas.completados}</div>
-          <div className="stat-title">Altas Médicas</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon stat-icon-red">
-              <span>📅</span>
-            </div>
-            <span className="stat-trend stat-trend-down">-2%</span>
-          </div>
-          <div className="stat-value">{estadisticas.promedioEstancia}</div>
-          <div className="stat-title">Días Promedio</div>
-        </div>
-      </div>
-
-      {/* Sección de Búsqueda - Mismo diseño que gestión de pacientes */}
-      <div className="content-card">
-        <h2>Buscar Episodio</h2>
-        
-        <div className="search-grid">
-          {/* Paciente ID */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Paciente ID
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: P-001"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filtroPaciente}
-              onChange={(e) => setFiltroPaciente(e.target.value)}
-            />
-          </div>
-
-          {/* Médico */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Médico
-            </label>
-            <input
-              type="text"
-              placeholder="Ej: Dr. García"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filtroMedico}
-              onChange={(e) => setFiltroMedico(e.target.value)}
-            />
-          </div>
-
-          {/* Estado */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Estado
-            </label>
-            <select
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-            >
-              <option value="todos">Todos los episodios</option>
-              <option value="activos">Solo activos</option>
-              <option value="completados">Solo completados</option>
-            </select>
-          </div>
-
-          {/* Botón de búsqueda */}
-          <div className="search-actions">
-            <div className="action-buttons">
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                🔍 Buscar Episodios
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Botones de Acción - Mismo estilo que gestión de pacientes */}
-      <div className="content-card">
-        <h2>Acciones Rápidas</h2>
-        <div className="action-buttons">
-          <Link
-            href="/hospitalizacion/admision"
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+        <div className="header-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => router.push('/')}
           >
-            ➕ Crear Nuevo Ingreso
-          </Link>
-          <Link
-            href="/hospitalizacion/episodios"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            📋 Ver Todos los Episodios
-          </Link>
-          <Link
-            href="/pacientes"
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium"
-          >
-            👥 Gestionar Pacientes
-          </Link>
+            ← Volver al Dashboard
+          </button>
         </div>
       </div>
 
-      {/* Lista de Episodios Recientes - Mismo estilo que gestión de pacientes */}
-      <div className="content-card">
-        <div className="flex justify-between items-center mb-6">
-          <h2>Episodios Recientes</h2>
-          <span className="text-sm text-gray-500">
-            {episodiosFiltrados.length} de {episodios.length} episodios
-          </span>
+      <div className="page-content">
+        {/* Tarjeta de Estadísticas - Mismo estilo */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-blue">🏥</div>
+            <div className="stat-content">
+              <div className="stat-value">{estadisticas.totalEpisodios}</div>
+              <div className="stat-title">Total Episodios</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-green">🛌</div>
+            <div className="stat-content">
+              <div className="stat-value">{estadisticas.activos}</div>
+              <div className="stat-title">Pacientes Activos</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-purple">✅</div>
+            <div className="stat-content">
+              <div className="stat-value">{estadisticas.completados}</div>
+              <div className="stat-title">Altas Médicas</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon stat-icon-red">📅</div>
+            <div className="stat-content">
+              <div className="stat-value">{estadisticas.promedioEstancia}</div>
+              <div className="stat-title">Días Promedio</div>
+            </div>
+          </div>
         </div>
 
-        {episodiosFiltrados.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">🏥</div>
-            <h3>No se encontraron episodios</h3>
-            <p>
-              {filtroPaciente || filtroMedico || filtroEstado !== 'todos' 
-                ? 'Intenta ajustar los filtros de búsqueda' 
-                : 'No hay episodios de hospitalización recientes'
-              }
-            </p>
-            <Link
-              href="/hospitalizacion/admision"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium mt-4 inline-block"
-            >
-              ➕ Crear Nuevo Ingreso
-            </Link>
-          </div>
-        ) : (
-          <div className="results-container">
-            {episodiosFiltrados.map((episodio) => (
-              <div key={episodio.id} className="patient-result-card">
-                <div className="patient-info">
-                  <h4>Paciente: {episodio.paciente_id}</h4>
-                  <div className="patient-details">
-                    <span>👨‍⚕️ {episodio.medico_tratante}</span>
-                    <span>🏥 {episodio.departamento}</span>
-                    <span>📅 {formatFecha(episodio.fecha_ingreso)}</span>
-                    {episodio.habitacion && (
-                      <span>🚪 Hab. {episodio.habitacion}-{episodio.cama}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {episodio.diagnostico_inicial}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    episodio.fecha_alta 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {episodio.fecha_alta ? 'Completado' : 'Activo'}
-                  </span>
-                  
-                  <Link
-                    href={`/hospitalizacion/episodios/${episodio.id}`}
-                    className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Ver Detalles
-                  </Link>
-                  
-                  {!episodio.fecha_alta && (
-                    <Link
-                      href={`/hospitalizacion/alta/${episodio.id}`}
-                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm font-medium"
-                    >
-                      Dar Alta
-                    </Link>
-                  )}
-                </div>
+        {/* Tarjeta de Búsqueda - IDÉNTICA a gestión de pacientes */}
+        <div className="content-card">
+          <h2>Buscar Episodio</h2>
+          
+          <div className="search-grid">
+            {/* Primera fila */}
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="searchPacienteId">ID Paciente:</label>
+                <input 
+                  type="text" 
+                  id="searchPacienteId" 
+                  value={searchPacienteId} 
+                  onChange={handleSearchInputChange}
+                  placeholder="Ej: P-001"
+                />
               </div>
-            ))}
+              
+              <div className="form-group">
+                <label htmlFor="searchMedico">Médico Tratante:</label>
+                <input 
+                  type="text" 
+                  id="searchMedico" 
+                  value={searchMedico} 
+                  onChange={handleSearchInputChange}
+                  placeholder="Ej: Dr. García"
+                />
+              </div>
+            </div>
+            
+            {/* Segunda fila */}
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="searchEstado">Estado:</label>
+                <select 
+                  id="searchEstado"
+                  value={searchEstado} 
+                  onChange={handleSearchInputChange}
+                  className="form-select"
+                >
+                  <option value="todos">Todos los episodios</option>
+                  <option value="activos">Solo activos</option>
+                  <option value="completados">Solo completados</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                {/* Espacio para futuros campos de búsqueda */}
+                <label>&nbsp;</label>
+                <div style={{height: '42px'}}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="search-actions">
+            <button 
+              onClick={handleSearchEpisodios} 
+              disabled={searching}
+              className="btn btn-primary"
+            >
+              {searching ? '🔍 Buscando...' : '🔍 Buscar Episodios'}
+            </button>
+            
+            <div className="action-buttons">
+              <Link
+                href="/hospitalizacion/admision"
+                className="btn btn-success"
+              >
+                ➕ Crear Nuevo Ingreso
+              </Link>
+              
+              <Link
+                href="/hospitalizacion/episodios"
+                className="btn btn-secondary"
+              >
+                📋 Ver Todos los Episodios
+              </Link>
+              
+              <Link
+                href="/pacientes"
+                className="btn btn-warning"
+              >
+                👥 Gestionar Pacientes
+              </Link>
+            </div>
+          </div>
+
+          {searchError && (
+            <div className="error-message">
+              {searchError}
+            </div>
+          )}
+        </div>
+
+        {/* Resultados de Búsqueda - Mismo estilo que pacientes */}
+        {searchResults.length > 0 && (
+          <div className="content-card">
+            <h3>Episodios Encontrados ({searchResults.length})</h3>
+            <div className="results-container">
+              {searchResults.map((episodio) => (
+                <div key={episodio.id} className="patient-result-card">
+                  <div className="patient-info">
+                    <h4>Paciente: {episodio.paciente_id}</h4>
+                    <div className="patient-details">
+                      <span>👨‍⚕️ <strong>{episodio.medico_tratante}</strong></span>
+                      <span>🏥 <strong>{episodio.departamento}</strong></span>
+                      <span>📅 <strong>{formatFecha(episodio.fecha_ingreso)}</strong></span>
+                      {episodio.habitacion && (
+                        <span>🚪 <strong>Hab. {episodio.habitacion}-{episodio.cama}</strong></span>
+                      )}
+                    </div>
+                    <p className="diagnostico-text">
+                      {episodio.diagnostico_inicial}
+                    </p>
+                  </div>
+                  <div className="patient-actions">
+                    <Link
+                      href={`/hospitalizacion/episodios/${episodio.id}`}
+                      className="btn btn-primary btn-sm"
+                    >
+                      Ver Detalles
+                    </Link>
+                    
+                    {!episodio.fecha_alta && (
+                      <Link
+                        href={`/hospitalizacion/alta/${episodio.id}`}
+                        className="btn btn-success btn-sm"
+                      >
+                        Dar Alta
+                      </Link>
+                    )}
+                    
+                    <span className={`status-badge ${
+                      episodio.fecha_alta ? 'status-completed' : 'status-active'
+                    }`}>
+                      {episodio.fecha_alta ? 'Completado' : 'Activo'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Footer con enlace para ver todos */}
-        {episodiosFiltrados.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-            <Link
-              href="/hospitalizacion/episodios"
-              className="text-blue-600 hover:text-blue-800 font-medium text-lg"
-            >
-              Ver todos los episodios →
+        {/* Estado cuando no hay búsquedas */}
+        {!searching && searchResults.length === 0 && !searchError && (
+          <div className="content-card empty-state">
+            <div className="empty-icon">🏥</div>
+            <h3>Buscar Episodios de Hospitalización</h3>
+            <p>Utilice los campos de búsqueda para encontrar episodios en el sistema</p>
+          </div>
+        )}
+
+        {/* Módulos Adicionales */}
+        <div className="content-card">
+          <h2>Módulos de Hospitalización</h2>
+          <div className="modules-grid">
+            <Link href="/hospitalizacion/episodios" className="module-card">
+              <div className="module-icon">📋</div>
+              <h3>Gestión de Episodios</h3>
+              <p>Administra todos los episodios de hospitalización activos y completados</p>
+            </Link>
+
+            <Link href="/hospitalizacion/admision" className="module-card">
+              <div className="module-icon">➕</div>
+              <h3>Admisión de Pacientes</h3>
+              <p>Registra nuevos ingresos hospitalarios y asigna recursos</p>
+            </Link>
+
+            <Link href="/hospitalizacion/altas" className="module-card">
+              <div className="module-icon">📄</div>
+              <h3>Informes de Alta</h3>
+              <p>Genera y gestiona informes de alta médica</p>
+            </Link>
+
+            <Link href="/hospitalizacion/reportes" className="module-card">
+              <div className="module-icon">📊</div>
+              <h3>Reportes y Estadísticas</h3>
+              <p>Analiza datos de hospitalización y métricas</p>
             </Link>
           </div>
-        )}
-      </div>
-
-      {/* Módulos Adicionales - Como en gestión de pacientes */}
-      <div className="content-card">
-        <h2>Módulos de Hospitalización</h2>
-        <div className="modules-grid">
-          <Link href="/hospitalizacion/episodios" className="module-card">
-            <div className="module-icon">📋</div>
-            <h3>Gestión de Episodios</h3>
-            <p>Administra todos los episodios de hospitalización activos y completados</p>
-          </Link>
-
-          <Link href="/hospitalizacion/admision" className="module-card">
-            <div className="module-icon">➕</div>
-            <h3>Admisión de Pacientes</h3>
-            <p>Registra nuevos ingresos hospitalarios y asigna recursos</p>
-          </Link>
-
-          <Link href="/hospitalizacion/altas" className="module-card">
-            <div className="module-icon">📄</div>
-            <h3>Informes de Alta</h3>
-            <p>Genera y gestiona informes de alta médica</p>
-          </Link>
-
-          <Link href="/hospitalizacion/reportes" className="module-card">
-            <div className="module-icon">📊</div>
-            <h3>Reportes y Estadísticas</h3>
-            <p>Analiza datos de hospitalización y métricas</p>
-          </Link>
         </div>
       </div>
+
+      <style jsx>{`
+        /* ESTILOS EXACTAMENTE IGUALES A GESTIÓN DE PACIENTES */
+        .page-container {
+          min-height: 100vh;
+          background-color: #f8fafc;
+          padding: 1rem;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          gap: 1rem;
+        }
+
+        .header-content h1 {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+        }
+
+        .header-content p {
+          color: #6b7280;
+          font-size: 1.125rem;
+        }
+
+        .header-actions {
+          flex-shrink: 0;
+        }
+
+        .page-content {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .content-card {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .content-card h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 1.5rem;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+
+        /* Grid de búsqueda mejorado */
+        .search-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+          align-items: start;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .form-group label {
+          font-weight: 500;
+          color: #374151;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        .form-group input, .form-select {
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          transition: all 0.2s;
+        }
+
+        .form-group input:focus, .form-select:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group input::placeholder {
+          color: #9ca3af;
+        }
+
+        /* Acciones de búsqueda */
+        .search-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-top: 2rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        /* Botones */
+        .btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.375rem;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.875rem;
+          text-decoration: none;
+          display: inline-block;
+          text-align: center;
+        }
+
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .btn-primary {
+          background-color: #3b82f6;
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background-color: #2563eb;
+        }
+
+        .btn-secondary {
+          background-color: #6b7280;
+          color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background-color: #4b5563;
+        }
+
+        .btn-success {
+          background-color: #10b981;
+          color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+          background-color: #059669;
+        }
+
+        .btn-warning {
+          background-color: #f59e0b;
+          color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+          background-color: #d97706;
+        }
+
+        .btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+        }
+
+        /* Resultados */
+        .results-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .patient-result-card {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.375rem;
+          background-color: #f9fafb;
+        }
+
+        .patient-info h4 {
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+        }
+
+        .patient-details {
+          display: flex;
+          gap: 1rem;
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-bottom: 0.5rem;
+        }
+
+        .patient-details strong {
+          color: #374151;
+        }
+
+        .diagnostico-text {
+          font-size: 0.875rem;
+          color: #6b7280;
+          font-style: italic;
+        }
+
+        .patient-actions {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .status-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 1rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .status-active {
+          background-color: #fef3c7;
+          color: #d97706;
+        }
+
+        .status-completed {
+          background-color: #d1fae5;
+          color: #065f46;
+        }
+
+        /* Estadísticas */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .stat-card {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          padding: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .stat-icon {
+          width: 4rem;
+          height: 4rem;
+          border-radius: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+        }
+
+        .stat-icon-blue { background-color: #dbeafe; color: #1d4ed8; }
+        .stat-icon-green { background-color: #d1fae5; color: #065f46; }
+        .stat-icon-purple { background-color: #f3e8ff; color: #7e22ce; }
+        .stat-icon-red { background-color: #fee2e2; color: #dc2626; }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #1f2937;
+        }
+
+        .stat-title {
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+
+        /* Módulos */
+        .modules-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .module-card {
+          background: #f8fafc;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.5rem;
+          padding: 1.5rem;
+          text-decoration: none;
+          color: inherit;
+          transition: all 0.2s;
+        }
+
+        .module-card:hover {
+          background: white;
+          border-color: #3b82f6;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .module-icon {
+          font-size: 2rem;
+          margin-bottom: 1rem;
+        }
+
+        .module-card h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+        }
+
+        .module-card p {
+          color: #6b7280;
+          font-size: 0.875rem;
+          line-height: 1.4;
+        }
+
+        /* Estados */
+        .error-message {
+          background-color: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          margin-top: 1rem;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 3rem 2rem;
+        }
+
+        .empty-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 50vh;
+          gap: 1rem;
+        }
+
+        .loading-spinner {
+          width: 2rem;
+          height: 2rem;
+          border: 2px solid #e5e7eb;
+          border-top: 2px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+          }
+          
+          .form-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+          
+          .action-buttons {
+            flex-direction: column;
+          }
+          
+          .patient-result-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
+          .patient-actions {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .stats-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .modules-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 }

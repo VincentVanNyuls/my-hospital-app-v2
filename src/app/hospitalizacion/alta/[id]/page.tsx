@@ -1,10 +1,11 @@
+// src/app/hospitalizacion/alta/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { HospitalizacionService } from '../../../utils/hospitalizacionService';
 import { EpisodioHospitalizacion } from '../../../types/hospitalizacion';
-import Link from 'next/link';
 
 const hospitalizacionService = new HospitalizacionService();
 
@@ -27,7 +28,6 @@ export default function AltaMedicaPage() {
   });
 
   useEffect(() => {
-    console.log('Cargando episodio con ID:', episodioId);
     cargarEpisodio();
   }, [episodioId]);
 
@@ -35,8 +35,6 @@ export default function AltaMedicaPage() {
     try {
       setError(null);
       const episodioData = await hospitalizacionService.getEpisodioById(episodioId);
-      
-      console.log('Datos del episodio encontrado:', episodioData);
       
       if (!episodioData) {
         setError(`No se encontró el episodio con ID: ${episodioId}`);
@@ -65,7 +63,6 @@ export default function AltaMedicaPage() {
     }
   };
 
-  // FUNCIONES PARA PDF
   const generarPDF = async () => {
     if (!episodio) return;
     
@@ -100,12 +97,12 @@ export default function AltaMedicaPage() {
     e.preventDefault();
     
     if (!formData.diagnostico_final.trim()) {
-      alert('Por favor ingresa el diagnóstico final');
+      setError('Por favor ingresa el diagnóstico final');
       return;
     }
 
     if (!formData.resumen_alta.trim()) {
-      alert('Por favor ingresa el resumen del alta');
+      setError('Por favor ingresa el resumen del alta');
       return;
     }
 
@@ -192,26 +189,30 @@ export default function AltaMedicaPage() {
   // Error al cargar
   if (error && !episodio) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">❌</div>
-        <h3>Error al cargar el episodio</h3>
-        <p>{error}</p>
-        <div className="action-buttons mt-4">
-          <button
-            onClick={() => {
-              hospitalizacionService.debugEpisodios();
-              cargarEpisodio();
-            }}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            Reintentar
-          </button>
-          <Link
-            href="/hospitalizacion/episodios"
-            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
-          >
-            Volver a Episodios
-          </Link>
+      <div className="page-container">
+        <div className="page-content">
+          <div className="content-card empty-state">
+            <div className="empty-icon">❌</div>
+            <h3>Error al cargar el episodio</h3>
+            <p>{error}</p>
+            <div className="action-buttons">
+              <button
+                onClick={() => {
+                  hospitalizacionService.debugEpisodios();
+                  cargarEpisodio();
+                }}
+                className="btn btn-primary"
+              >
+                Reintentar
+              </button>
+              <Link
+                href="/hospitalizacion/episodios"
+                className="btn btn-secondary"
+              >
+                Volver a Episodios
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -220,16 +221,20 @@ export default function AltaMedicaPage() {
   // Episodio no encontrado
   if (!episodio) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">❌</div>
-        <h3>Episodio no encontrado</h3>
-        <p>El episodio con ID "{episodioId}" no existe.</p>
-        <Link
-          href="/hospitalizacion/episodios"
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium mt-4 inline-block"
-        >
-          Volver a la lista de episodios
-        </Link>
+      <div className="page-container">
+        <div className="page-content">
+          <div className="content-card empty-state">
+            <div className="empty-icon">❌</div>
+            <h3>Episodio no encontrado</h3>
+            <p>El episodio con ID "{episodioId}" no existe.</p>
+            <Link
+              href="/hospitalizacion/episodios"
+              className="btn btn-primary"
+            >
+              Volver a la lista de episodios
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -237,48 +242,64 @@ export default function AltaMedicaPage() {
   // Ya tiene alta médica
   if (episodio.fecha_alta) {
     return (
-      <div className="alta-content">
-        <div className="empty-state">
-          <div className="empty-icon">✅</div>
-          <h3>Alta Médica Ya Registrada</h3>
-          <p className="text-gray-600 mb-2">
-            Este episodio ya fue dado de alta el {formatFecha(episodio.fecha_alta)}.
-          </p>
-          <p className="text-gray-600 mb-6">
-            Diagnóstico final: {episodio.diagnostico_final}
-          </p>
-          
-          {/* Botones de PDF para episodios ya dados de alta */}
-          <div className="action-buttons mb-6">
-            <button
-              onClick={generarPDF}
-              disabled={isGeneratingPDF}
-              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed font-medium"
-            >
-              {isGeneratingPDF ? '📄 Generando...' : '📄 Descargar Informe PDF'}
-            </button>
-            <button
-              onClick={previsualizarPDF}
-              disabled={isGeneratingPDF}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed font-medium"
-            >
-              {isGeneratingPDF ? '👁️ Generando...' : '👁️ Previsualizar PDF'}
-            </button>
+      <div className="page-container">
+        <div className="page-header">
+          <div className="header-content">
+            <h1>Alta Médica</h1>
+            <p>Episodio ya completado - Informe de alta</p>
           </div>
-
-          <div className="action-buttons">
-            <Link
-              href={`/hospitalizacion/episodios/${episodioId}`}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Ver Detalles del Episodio
-            </Link>
+          <div className="header-actions">
             <Link
               href="/hospitalizacion/episodios"
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              className="btn btn-secondary"
             >
-              Lista de Episodios
+              ← Volver a Episodios
             </Link>
+          </div>
+        </div>
+
+        <div className="page-content">
+          <div className="content-card empty-state">
+            <div className="empty-icon">✅</div>
+            <h3>Alta Médica Ya Registrada</h3>
+            <p className="status-description">
+              Este episodio ya fue dado de alta el {formatFecha(episodio.fecha_alta)}.
+            </p>
+            <p className="status-description">
+              Diagnóstico final: {episodio.diagnostico_final}
+            </p>
+            
+            <div className="action-buttons">
+              <button
+                onClick={generarPDF}
+                disabled={isGeneratingPDF}
+                className="btn btn-danger"
+              >
+                {isGeneratingPDF ? '📄 Generando...' : '📄 Descargar Informe PDF'}
+              </button>
+              <button
+                onClick={previsualizarPDF}
+                disabled={isGeneratingPDF}
+                className="btn btn-primary"
+              >
+                {isGeneratingPDF ? '👁️ Generando...' : '👁️ Previsualizar PDF'}
+              </button>
+            </div>
+
+            <div className="action-buttons">
+              <Link
+                href={`/hospitalizacion/episodios/${episodioId}`}
+                className="btn btn-success"
+              >
+                Ver Detalles del Episodio
+              </Link>
+              <Link
+                href="/hospitalizacion/episodios"
+                className="btn btn-secondary"
+              >
+                Lista de Episodios
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -286,332 +307,820 @@ export default function AltaMedicaPage() {
   }
 
   return (
-    // ✅ SOLO este contenedor - ELIMINA los duplicados
-    <div className="alta-content">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Alta Médica</h1>
-          <p className="text-gray-600">Registrar informe de alta para {episodio.paciente_id}</p>
-          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-            <span>ID Episodio: {episodio.id}</span>
+    <div className="page-container">
+      {/* Header IDÉNTICO a gestión de pacientes */}
+      <div className="page-header">
+        <div className="header-content">
+          <h1>Alta Médica</h1>
+          <p>Registrar informe de alta para el paciente {episodio.paciente_id}</p>
+          <div className="header-details">
+            <span>ID Episodio: <strong>{episodio.id}</strong></span>
             <span>•</span>
-            <span>Ingreso: {formatFecha(episodio.fecha_ingreso)}</span>
+            <span>Ingreso: <strong>{formatFecha(episodio.fecha_ingreso)}</strong></span>
           </div>
         </div>
-        <Link
-          href={`/hospitalizacion/episodios/${episodioId}`}
-          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
-        >
-          ← Volver al Episodio
-        </Link>
+        <div className="header-actions">
+          <Link
+            href={`/hospitalizacion/episodios/${episodioId}`}
+            className="btn btn-secondary"
+          >
+            ← Volver al Episodio
+          </Link>
+        </div>
       </div>
 
-      {/* Mostrar error si existe */}
-      {error && (
-        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-          <strong>Error: </strong> {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulario Principal */}
-        <div className="lg:col-span-2">
-          <div className="content-card">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Información del Episodio */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 className="font-semibold text-blue-800 mb-4 text-lg">Información del Episodio</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Paciente ID</p>
-                    <p className="font-semibold text-gray-800">{episodio.paciente_id}</p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Fecha Ingreso</p>
-                    <p className="font-semibold text-gray-800">{formatFecha(episodio.fecha_ingreso)}</p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Médico Tratante</p>
-                    <p className="font-semibold text-gray-800">{episodio.medico_tratante}</p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Departamento</p>
-                    <p className="font-semibold text-gray-800">{episodio.departamento}</p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Diagnóstico Inicial</p>
-                    <p className="font-semibold text-gray-800 text-sm">{episodio.diagnostico_inicial}</p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 text-sm font-medium">Días de Estancia</p>
-                    <p className="font-semibold text-gray-800">{calcularDiasEstancia()} días</p>
-                  </div>
+      <div className="page-content">
+        <div className="content-grid">
+          {/* Formulario Principal */}
+          <div className="mi-pagina-content">
+            <div className="content-card">
+              <h2>Registro de Alta Médica</h2>
+              
+              {error && (
+                <div className="error-message">
+                  {error}
                 </div>
-              </div>
+              )}
 
-              {/* Diagnóstico Final */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Diagnóstico Final *
-                </label>
-                <input
-                  type="text"
-                  value={formData.diagnostico_final}
-                  onChange={(e) => setFormData({...formData, diagnostico_final: e.target.value})}
-                  placeholder="Ej: Infección bacteriana resuelta"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Diagnóstico definitivo al momento del alta
-                </p>
-              </div>
-
-              {/* Condición al Alta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Condición al Alta *
-                </label>
-                <select
-                  value={formData.condicion_alta}
-                  onChange={(e) => setFormData({...formData, condicion_alta: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="Excelente">Excelente</option>
-                  <option value="Bueno">Bueno</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Grave">Grave</option>
-                  <option value="Fallecido">Fallecido</option>
-                </select>
-              </div>
-
-              {/* Resumen del Alta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Resumen de la Evolución y Alta *
-                </label>
-                <textarea
-                  value={formData.resumen_alta}
-                  onChange={(e) => setFormData({...formData, resumen_alta: e.target.value})}
-                  placeholder="Describa la evolución durante la hospitalización, tratamiento recibido y motivo del alta..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                  required
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Resumen completo de la evolución hospitalaria
-                </p>
-              </div>
-
-              {/* Medicamentos al Alta */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Medicamentos al Alta
-                </label>
-                <div className="space-y-3">
-                  {formData.medicamentos_alta.map((medicamento, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={medicamento}
-                        onChange={(e) => actualizarMedicamento(index, e.target.value)}
-                        placeholder="Ej: Amoxicilina 500mg cada 8h por 7 días"
-                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {formData.medicamentos_alta.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => eliminarMedicamento(index)}
-                          className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                        >
-                          ×
-                        </button>
-                      )}
+              <form onSubmit={handleSubmit} className="form-container">
+                {/* Información del Episodio */}
+                <div className="info-card">
+                  <h3>Información del Episodio</h3>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Paciente ID</label>
+                      <div className="info-value">{episodio.paciente_id}</div>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={agregarMedicamento}
-                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-                  >
-                    + Agregar Medicamento
-                  </button>
+                    <div className="info-item">
+                      <label>Fecha Ingreso</label>
+                      <div className="info-value">{formatFecha(episodio.fecha_ingreso)}</div>
+                    </div>
+                    <div className="info-item">
+                      <label>Médico Tratante</label>
+                      <div className="info-value">{episodio.medico_tratante}</div>
+                    </div>
+                    <div className="info-item">
+                      <label>Departamento</label>
+                      <div className="info-value">{episodio.departamento}</div>
+                    </div>
+                    <div className="info-item full-width">
+                      <label>Diagnóstico Inicial</label>
+                      <div className="info-value">{episodio.diagnostico_inicial}</div>
+                    </div>
+                    <div className="info-item">
+                      <label>Días de Estancia</label>
+                      <div className="info-value highlight">{calcularDiasEstancia()} días</div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Especificar medicamento, dosis, frecuencia y duración
-                </p>
-              </div>
 
-              {/* Instrucciones de Seguimiento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Instrucciones de Seguimiento
-                </label>
-                <textarea
-                  value={formData.instrucciones_seguimiento}
-                  onChange={(e) => setFormData({...formData, instrucciones_seguimiento: e.target.value})}
-                  placeholder="Ej: Control en 7 días, reposo relativo, dieta blanda..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Recomendaciones y citas de seguimiento
-                </p>
-              </div>
-
-              {/* Botones de Acción */}
-              <div className="flex flex-col gap-4 pt-6 border-t border-gray-200">
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed font-medium text-lg"
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        Registrando Alta...
-                      </span>
-                    ) : (
-                      '✅ Registrar Alta Médica'
-                    )}
-                  </button>
-                  
-                  {/* Botones de PDF */}
-                  <button
-                    type="button"
-                    onClick={previsualizarPDF}
-                    disabled={isGeneratingPDF}
-                    className="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed font-medium"
-                  >
-                    {isGeneratingPDF ? 'Generando...' : '👁️ Previsualizar'}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={generarPDF}
-                    disabled={isGeneratingPDF}
-                    className="bg-red-600 text-white px-6 py-4 rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed font-medium"
-                  >
-                    {isGeneratingPDF ? 'Generando...' : '📄 Descargar PDF'}
-                  </button>
+                {/* Diagnóstico Final */}
+                <div className="form-group">
+                  <label htmlFor="diagnostico_final">Diagnóstico Final *</label>
+                  <input
+                    type="text"
+                    id="diagnostico_final"
+                    value={formData.diagnostico_final}
+                    onChange={(e) => setFormData({...formData, diagnostico_final: e.target.value})}
+                    placeholder="Ej: Infección bacteriana resuelta"
+                    required
+                  />
+                  <div className="field-description">
+                    Diagnóstico definitivo al momento del alta
+                  </div>
                 </div>
-                
-                <Link
-                  href={`/hospitalizacion/episodios/${episodioId}`}
-                  className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium text-center"
+
+                {/* Condición al Alta */}
+                <div className="form-group">
+                  <label htmlFor="condicion_alta">Condición al Alta *</label>
+                  <select
+                    id="condicion_alta"
+                    value={formData.condicion_alta}
+                    onChange={(e) => setFormData({...formData, condicion_alta: e.target.value})}
+                    required
+                  >
+                    <option value="Excelente">Excelente</option>
+                    <option value="Bueno">Bueno</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Grave">Grave</option>
+                    <option value="Fallecido">Fallecido</option>
+                  </select>
+                </div>
+
+                {/* Resumen del Alta */}
+                <div className="form-group">
+                  <label htmlFor="resumen_alta">Resumen de la Evolución y Alta *</label>
+                  <textarea
+                    id="resumen_alta"
+                    value={formData.resumen_alta}
+                    onChange={(e) => setFormData({...formData, resumen_alta: e.target.value})}
+                    placeholder="Describa la evolución durante la hospitalización, tratamiento recibido y motivo del alta..."
+                    rows={4}
+                    required
+                  />
+                  <div className="field-description">
+                    Resumen completo de la evolución hospitalaria
+                  </div>
+                </div>
+
+                {/* Medicamentos al Alta */}
+                <div className="form-group">
+                  <label>Medicamentos al Alta</label>
+                  <div className="medicamentos-list">
+                    {formData.medicamentos_alta.map((medicamento, index) => (
+                      <div key={index} className="medicamento-item">
+                        <input
+                          type="text"
+                          value={medicamento}
+                          onChange={(e) => actualizarMedicamento(index, e.target.value)}
+                          placeholder="Ej: Amoxicilina 500mg cada 8h por 7 días"
+                          className="medicamento-input"
+                        />
+                        {formData.medicamentos_alta.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => eliminarMedicamento(index)}
+                            className="btn btn-danger btn-sm medicamento-remove"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={agregarMedicamento}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      + Agregar Medicamento
+                    </button>
+                  </div>
+                  <div className="field-description">
+                    Especificar medicamento, dosis, frecuencia y duración
+                  </div>
+                </div>
+
+                {/* Instrucciones de Seguimiento */}
+                <div className="form-group">
+                  <label htmlFor="instrucciones_seguimiento">Instrucciones de Seguimiento</label>
+                  <textarea
+                    id="instrucciones_seguimiento"
+                    value={formData.instrucciones_seguimiento}
+                    onChange={(e) => setFormData({...formData, instrucciones_seguimiento: e.target.value})}
+                    placeholder="Ej: Control en 7 días, reposo relativo, dieta blanda..."
+                    rows={3}
+                  />
+                  <div className="field-description">
+                    Recomendaciones y citas de seguimiento
+                  </div>
+                </div>
+
+                {/* Botones de Acción */}
+                <div className="form-actions">
+                  <div className="action-buttons">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn btn-success btn-large"
+                    >
+                      {isSubmitting ? (
+                        <span className="button-loading">
+                          <div className="loading-spinner-small"></div>
+                          Registrando Alta...
+                        </span>
+                      ) : (
+                        '✅ Registrar Alta Médica'
+                      )}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={previsualizarPDF}
+                      disabled={isGeneratingPDF}
+                      className="btn btn-primary"
+                    >
+                      {isGeneratingPDF ? 'Generando...' : '👁️ Previsualizar'}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={generarPDF}
+                      disabled={isGeneratingPDF}
+                      className="btn btn-danger"
+                    >
+                      {isGeneratingPDF ? 'Generando...' : '📄 Descargar PDF'}
+                    </button>
+                  </div>
+                  
+                  <Link
+                    href={`/hospitalizacion/episodios/${episodioId}`}
+                    className="btn btn-secondary btn-block"
+                  >
+                    Cancelar
+                  </Link>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Sidebar - Información de Ayuda */}
+          <div className="sidebar-content">
+            {/* Recordatorio Importante */}
+            <div className="content-card warning-card">
+              <h3>⚠️ Importante</h3>
+              <div className="warning-list">
+                <div className="warning-item">
+                  <span className="warning-dot"></span>
+                  <span>Verificar todos los datos antes de registrar el alta</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot"></span>
+                  <span>El alta médica no se puede deshacer</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot"></span>
+                  <span>Se generará automáticamente el informe de alta</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot"></span>
+                  <span>El episodio pasará a estado "Completado"</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Generación de Documentos */}
+            <div className="content-card success-card">
+              <h3>📄 Documentos</h3>
+              <div className="document-actions">
+                <button
+                  onClick={previsualizarPDF}
+                  disabled={isGeneratingPDF}
+                  className="btn btn-outline btn-block"
                 >
-                  Cancelar
-                </Link>
+                  <span className="button-icon">👁️</span>
+                  Previsualizar Informe
+                </button>
+                <button
+                  onClick={generarPDF}
+                  disabled={isGeneratingPDF}
+                  className="btn btn-outline btn-block"
+                >
+                  <span className="button-icon">📥</span>
+                  Descargar PDF
+                </button>
               </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Sidebar - Información de Ayuda */}
-        <div className="space-y-6">
-          {/* Recordatorio Importante */}
-          <div className="content-card bg-yellow-50 border-yellow-200">
-            <h3 className="text-lg font-semibold text-yellow-800 mb-3">⚠️ Importante</h3>
-            <ul className="text-sm text-yellow-700 space-y-2">
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>Verificar todos los datos antes de registrar el alta</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>El alta médica no se puede deshacer</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>Se generará automáticamente el informe de alta</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>•</span>
-                <span>El episodio pasará a estado "Completado"</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Generación de Documentos */}
-          <div className="content-card bg-green-50 border-green-200">
-            <h3 className="text-lg font-semibold text-green-800 mb-3">📄 Documentos</h3>
-            <div className="space-y-3">
-              <button
-                onClick={previsualizarPDF}
-                disabled={isGeneratingPDF}
-                className="w-full bg-white text-green-800 p-3 rounded-lg border border-green-200 hover:bg-green-100 disabled:opacity-50 transition-colors text-left"
-              >
-                <span className="flex items-center gap-3">
-                  <span className="text-xl">👁️</span>
-                  <span>Previsualizar Informe</span>
-                </span>
-              </button>
-              <button
-                onClick={generarPDF}
-                disabled={isGeneratingPDF}
-                className="w-full bg-white text-green-800 p-3 rounded-lg border border-green-200 hover:bg-green-100 disabled:opacity-50 transition-colors text-left"
-              >
-                <span className="flex items-center gap-3">
-                  <span className="text-xl">📥</span>
-                  <span>Descargar PDF</span>
-                </span>
-              </button>
-            </div>
-            <p className="text-xs text-green-600 mt-3">
-              Genera el informe de alta en formato PDF
-            </p>
-          </div>
-
-          {/* Resumen del Episodio */}
-          <div className="content-card">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Resumen del Episodio</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Días de estancia</span>
-                <span className="font-semibold text-gray-800">{calcularDiasEstancia()} días</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Notas de evolución</span>
-                <span className="font-semibold text-gray-800">{episodio.notas_evolucion?.length || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Procedimientos</span>
-                <span className="font-semibold text-gray-800">{episodio.procedimientos?.length || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Estado actual</span>
-                <span className="font-semibold text-green-600">Activo</span>
+              <div className="action-description">
+                Genera el informe de alta en formato PDF
               </div>
             </div>
-          </div>
 
-          {/* Plantilla de Ejemplo */}
-          <div className="content-card bg-blue-50 border-blue-200">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">💡 Ejemplo de Alta</h3>
-            <div className="text-sm text-blue-700 space-y-3">
-              <div>
-                <p className="font-medium">Diagnóstico Final:</p>
-                <p>Neumonía bacteriana resuelta</p>
+            {/* Resumen del Episodio */}
+            <div className="content-card">
+              <h3>📊 Resumen del Episodio</h3>
+              <div className="stats-list">
+                <div className="stat-item">
+                  <span className="stat-label">Días de estancia</span>
+                  <span className="stat-value">{calcularDiasEstancia()} días</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Notas de evolución</span>
+                  <span className="stat-value">{episodio.notas_evolucion?.length || 0}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Procedimientos</span>
+                  <span className="stat-value">{episodio.procedimientos?.length || 0}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Estado actual</span>
+                  <span className="stat-value status-active">Activo</span>
+                </div>
               </div>
-              <div>
-                <p className="font-medium">Resumen:</p>
-                <p>Paciente evolucionó favorablemente con antibioticoterapia...</p>
-              </div>
-              <div>
-                <p className="font-medium">Medicamentos:</p>
-                <p>Amoxicilina 500mg/8h × 7 días</p>
-              </div>
-              <div>
-                <p className="font-medium">Seguimiento:</p>
-                <p>Control en 7 días, radiografía de control</p>
+            </div>
+
+            {/* Plantilla de Ejemplo */}
+            <div className="content-card info-card">
+              <h3>💡 Ejemplo de Alta</h3>
+              <div className="example-content">
+                <div className="example-item">
+                  <div className="example-label">Diagnóstico Final:</div>
+                  <div className="example-text">Neumonía bacteriana resuelta</div>
+                </div>
+                <div className="example-item">
+                  <div className="example-label">Resumen:</div>
+                  <div className="example-text">Paciente evolucionó favorablemente con antibioticoterapia...</div>
+                </div>
+                <div className="example-item">
+                  <div className="example-label">Medicamentos:</div>
+                  <div className="example-text">Amoxicilina 500mg/8h × 7 días</div>
+                </div>
+                <div className="example-item">
+                  <div className="example-label">Seguimiento:</div>
+                  <div className="example-text">Control en 7 días, radiografía de control</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        /* ESTILOS EXACTAMENTE IGUALES A GESTIÓN DE PACIENTES */
+        .page-container {
+          min-height: 100vh;
+          background-color: #f8fafc;
+          padding: 1rem;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          gap: 1rem;
+        }
+
+        .header-content h1 {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+        }
+
+        .header-content p {
+          color: #6b7280;
+          font-size: 1.125rem;
+        }
+
+        .header-details {
+          display: flex;
+          gap: 0.75rem;
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-top: 0.5rem;
+        }
+
+        .header-details strong {
+          color: #374151;
+        }
+
+        .header-actions {
+          flex-shrink: 0;
+        }
+
+        .page-content {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .content-grid {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .content-card {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .content-card h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 1.5rem;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+
+        .content-card h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 1rem;
+        }
+
+        /* Cards especiales */
+        .warning-card {
+          background-color: #fefce8;
+          border: 1px solid #fef08a;
+        }
+
+        .warning-card h3 {
+          color: #854d0e;
+        }
+
+        .success-card {
+          background-color: #f0fdf4;
+          border: 1px solid #bbf7d0;
+        }
+
+        .success-card h3 {
+          color: #166534;
+        }
+
+        .info-card {
+          background-color: #eff6ff;
+          border: 1px solid #bfdbfe;
+        }
+
+        .info-card h3 {
+          color: #1e40af;
+        }
+
+        /* Formulario */
+        .form-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .form-group label {
+          font-weight: 500;
+          color: #374151;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          transition: all 0.2s;
+        }
+
+        .form-group input:focus, 
+        .form-group select:focus, 
+        .form-group textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group textarea {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        .field-description {
+          color: #6b7280;
+          font-size: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        /* Información del episodio */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+
+        .info-item {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .info-item.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .info-item label {
+          font-weight: 500;
+          color: #374151;
+          font-size: 0.875rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+
+        .info-value.highlight {
+          color: #dc2626;
+          font-weight: 600;
+        }
+
+        /* Medicamentos */
+        .medicamentos-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .medicamento-item {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .medicamento-input {
+          flex: 1;
+        }
+
+        .medicamento-remove {
+          flex-shrink: 0;
+        }
+
+        /* Botones */
+        .btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.375rem;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.875rem;
+          text-decoration: none;
+          display: inline-block;
+          text-align: center;
+        }
+
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .btn-primary {
+          background-color: #3b82f6;
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background-color: #2563eb;
+        }
+
+        .btn-secondary {
+          background-color: #6b7280;
+          color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background-color: #4b5563;
+        }
+
+        .btn-success {
+          background-color: #10b981;
+          color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+          background-color: #059669;
+        }
+
+        .btn-danger {
+          background-color: #ef4444;
+          color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+          background-color: #dc2626;
+        }
+
+        .btn-warning {
+          background-color: #f59e0b;
+          color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+          background-color: #d97706;
+        }
+
+        .btn-large {
+          padding: 1rem 2rem;
+          font-size: 1rem;
+        }
+
+        .btn-block {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        .btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+        }
+
+        .btn-outline {
+          background-color: transparent;
+          border: 1px solid #d1d5db;
+          color: #374151;
+        }
+
+        .btn-outline:hover:not(:disabled) {
+          background-color: #f9fafb;
+        }
+
+        .form-actions {
+          margin-top: 2rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+          margin-bottom: 1rem;
+        }
+
+        .button-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .button-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .button-icon {
+          margin-right: 0.5rem;
+        }
+
+        .loading-spinner-small {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid transparent;
+          border-top: 2px solid white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        .action-description {
+          color: #6b7280;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+        }
+
+        /* Sidebar Styles */
+        .warning-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .warning-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: #854d0e;
+        }
+
+        .warning-dot {
+          width: 0.5rem;
+          height: 0.5rem;
+          border-radius: 50%;
+          background-color: #f59e0b;
+          flex-shrink: 0;
+          margin-top: 0.375rem;
+        }
+
+        .document-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .stats-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .stat-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .stat-label {
+          color: #6b7280;
+          font-size: 0.875rem;
+        }
+
+        .stat-value {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .stat-value.status-active {
+          color: #059669;
+        }
+
+        .example-content {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .example-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .example-label {
+          font-weight: 500;
+          color: #1e40af;
+          font-size: 0.75rem;
+        }
+
+        .example-text {
+          color: #374151;
+          font-size: 0.75rem;
+          line-height: 1.4;
+        }
+
+        /* Estados */
+        .error-message {
+          background-color: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          margin-bottom: 1rem;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 3rem 2rem;
+        }
+
+        .empty-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+
+        .status-description {
+          color: #6b7280;
+          margin-bottom: 1rem;
+        }
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 50vh;
+          gap: 1rem;
+        }
+
+        .loading-spinner {
+          width: 2rem;
+          height: 2rem;
+          border: 2px solid #e5e7eb;
+          border-top: 2px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+          }
+          
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .info-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .action-buttons {
+            flex-direction: column;
+          }
+          
+          .header-details {
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }

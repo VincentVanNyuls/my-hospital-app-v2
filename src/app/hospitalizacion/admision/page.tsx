@@ -1,9 +1,11 @@
+// src/app/hospitalizacion/admision/page.tsx
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import PatientSelector from '../../components/PatientSelector';
 import { HospitalizacionService } from '../../utils/hospitalizacionService';
-import { useRouter } from 'next/navigation';
 import { PacienteData } from '../../types/paciente';
 
 interface PacienteSeleccionado {
@@ -30,6 +32,7 @@ export default function AdmisionPage() {
     cama: 'A'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePatientSelect = (patientId: string, patientData?: PacienteData) => {
     if (patientData) {
@@ -42,6 +45,7 @@ export default function AdmisionPage() {
         SIP: patientData.SIP,
         NumHistoriaClinica: patientData.NumHistoriaClinica
       });
+      setError(null);
     } else {
       setPacienteSeleccionado(null);
     }
@@ -50,11 +54,9 @@ export default function AdmisionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🔍 === INICIANDO ADMISIÓN REAL ===');
-    
     // Validaciones
     if (!pacienteSeleccionado) {
-      alert('❌ Por favor selecciona un paciente');
+      setError('❌ Por favor selecciona un paciente');
       return;
     }
 
@@ -62,15 +64,14 @@ export default function AdmisionPage() {
     const camposVacios = camposRequeridos.filter(campo => !formData[campo as keyof typeof formData]);
     
     if (camposVacios.length > 0) {
-      alert(`❌ Por favor completa todos los campos requeridos: ${camposVacios.join(', ')}`);
+      setError(`❌ Por favor completa todos los campos requeridos: ${camposVacios.join(', ')}`);
       return;
     }
 
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      console.log('🟡 Creando datos de episodio...');
-      
       const datosEpisodio = {
         paciente_id: pacienteSeleccionado.id,
         fecha_ingreso: new Date().toISOString(),
@@ -92,12 +93,7 @@ export default function AdmisionPage() {
         antecedentes_medicos: ''
       };
 
-      console.log('📦 Enviando a Firestore:', datosEpisodio);
-
-      // ✅ LLAMADA REAL AL SERVICIO
       const nuevoEpisodio = await hospitalizacionService.admitirPaciente(datosEpisodio);
-
-      console.log('✅ Respuesta de Firestore:', nuevoEpisodio);
 
       if (!nuevoEpisodio) {
         throw new Error('No se recibió respuesta de Firestore');
@@ -106,20 +102,12 @@ export default function AdmisionPage() {
       const episodioId = nuevoEpisodio.id;
       
       if (!episodioId) {
-        console.error('❌ No ID en respuesta:', nuevoEpisodio);
         throw new Error('No se pudo obtener el ID del episodio creado');
       }
 
-      console.log('🎯 Episodio creado con ID:', episodioId);
-      
-      // ✅ REDIRECCIÓN
-      const rutaDestino = `/hospitalizacion/episodios/${episodioId}`;
-      console.log('🔄 Redirigiendo a:', rutaDestino);
-      
       // Redirección con pequeño delay para estabilidad
       setTimeout(() => {
-        router.push(rutaDestino);
-        console.log('✅ Redirección ejecutada');
+        router.push(`/hospitalizacion/episodios/${episodioId}`);
       }, 100);
       
     } catch (error) {
@@ -130,302 +118,759 @@ export default function AdmisionPage() {
         mensajeError += `: ${error.message}`;
       }
       
-      alert(mensajeError);
+      setError(mensajeError);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    // ✅ SOLO este contenedor - ELIMINA los duplicados
-    <div className="admision-content">
-      {/* Header */}
-      <div className="dashboard-header">
-        <h1>Admisión de Pacientes</h1>
-        <p>Registrar nuevo ingreso hospitalario</p>
+    <div className="page-container">
+      {/* Header IDÉNTICO a gestión de pacientes */}
+      <div className="page-header">
+        <div className="header-content">
+          <h1>Admisión de Pacientes</h1>
+          <p>Registrar nuevo ingreso hospitalario en el sistema</p>
+        </div>
+        <div className="header-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => router.push('/hospitalizacion')}
+          >
+            ← Volver a Hospitalización
+          </button>
+        </div>
       </div>
 
-      {/* Contenido Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulario Principal */}
-        <div className="lg:col-span-2">
-          <div className="content-card">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Paso 1: Selección de Paciente */}
-              <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">
-                    1
+      <div className="page-content">
+        <div className="content-grid">
+          {/* Formulario Principal */}
+          <div className="mi-pagina-content">
+            <div className="content-card">
+              <h2>Proceso de Admisión</h2>
+              
+              <form onSubmit={handleSubmit} className="form-container">
+                {/* Paso 1: Selección de Paciente */}
+                <div className="form-section">
+                  <div className="section-header">
+                    <div className="step-number">1</div>
+                    <h3>Seleccionar Paciente</h3>
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-800">Seleccionar Paciente</h2>
-                </div>
-                
-                <PatientSelector onPatientSelect={handlePatientSelect} />
-                
-                {pacienteSeleccionado && (
-                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="text-green-600 text-xl">✅</div>
-                      <div>
-                        <p className="font-semibold text-green-800 text-lg">
+                  
+                  <PatientSelector onPatientSelect={handlePatientSelect} />
+                  
+                  {pacienteSeleccionado && (
+                    <div className="success-message">
+                      <div className="success-icon">✅</div>
+                      <div className="success-content">
+                        <div className="success-title">
                           {pacienteSeleccionado.nombre} {pacienteSeleccionado.apellido}
-                        </p>
-                        <div className="flex flex-wrap gap-4 text-sm text-green-600 mt-1">
-                          <span>ID: {pacienteSeleccionado.id}</span>
-                          {pacienteSeleccionado.DNI_NIE && <span>DNI: {pacienteSeleccionado.DNI_NIE}</span>}
-                          {pacienteSeleccionado.SIP && <span>SIP: {pacienteSeleccionado.SIP}</span>}
+                        </div>
+                        <div className="success-details">
+                          <span>ID: <strong>{pacienteSeleccionado.id}</strong></span>
+                          {pacienteSeleccionado.DNI_NIE && <span>DNI: <strong>{pacienteSeleccionado.DNI_NIE}</strong></span>}
+                          {pacienteSeleccionado.SIP && <span>SIP: <strong>{pacienteSeleccionado.SIP}</strong></span>}
                         </div>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Paso 2: Datos de Admisión */}
+                {pacienteSeleccionado && (
+                  <div className="form-section">
+                    <div className="section-header">
+                      <div className="step-number">2</div>
+                      <h3>Datos de Admisión</h3>
+                    </div>
+                    
+                    <div className="form-grid">
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label htmlFor="medico_tratante">Médico Tratante *</label>
+                          <input
+                            type="text"
+                            id="medico_tratante"
+                            value={formData.medico_tratante}
+                            onChange={(e) => setFormData({...formData, medico_tratante: e.target.value})}
+                            placeholder="Ej: Dr. García López"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="departamento">Departamento *</label>
+                          <select
+                            id="departamento"
+                            value={formData.departamento}
+                            onChange={(e) => setFormData({...formData, departamento: e.target.value})}
+                            required
+                          >
+                            <option value="Medicina Interna">Medicina Interna</option>
+                            <option value="Cirugía General">Cirugía General</option>
+                            <option value="Pediatría">Pediatría</option>
+                            <option value="Ginecología">Ginecología</option>
+                            <option value="Traumatología">Traumatología</option>
+                            <option value="Cardiología">Cardiología</option>
+                            <option value="Neurología">Neurología</option>
+                            <option value="Oncología">Oncología</option>
+                            <option value="UCI">Unidad de Cuidados Intensivos</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label htmlFor="habitacion">Habitación *</label>
+                          <input
+                            type="text"
+                            id="habitacion"
+                            value={formData.habitacion}
+                            onChange={(e) => setFormData({...formData, habitacion: e.target.value})}
+                            placeholder="Ej: 201"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="cama">Cama *</label>
+                          <input
+                            type="text"
+                            id="cama"
+                            value={formData.cama}
+                            onChange={(e) => setFormData({...formData, cama: e.target.value})}
+                            placeholder="Ej: A"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group full-width">
+                        <label htmlFor="motivo_ingreso">Motivo de Ingreso *</label>
+                        <textarea
+                          id="motivo_ingreso"
+                          value={formData.motivo_ingreso}
+                          onChange={(e) => setFormData({...formData, motivo_ingreso: e.target.value})}
+                          placeholder="Describa el motivo del ingreso hospitalario..."
+                          rows={3}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group full-width">
+                        <label htmlFor="diagnostico_inicial">Diagnóstico Inicial *</label>
+                        <input
+                          type="text"
+                          id="diagnostico_inicial"
+                          value={formData.diagnostico_inicial}
+                          onChange={(e) => setFormData({...formData, diagnostico_inicial: e.target.value})}
+                          placeholder="Ej: Sospecha de infección bacteriana"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Botón de Envío */}
+                    <div className="form-actions">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn btn-success btn-large"
+                      >
+                        {isSubmitting ? (
+                          <span className="button-loading">
+                            <div className="loading-spinner-small"></div>
+                            Admitiendo Paciente...
+                          </span>
+                        ) : (
+                          <span className="button-content">
+                            ✅ Admitir Paciente
+                          </span>
+                        )}
+                      </button>
+                      <p className="action-description">
+                        El paciente será ingresado y redirigido a la página de detalles del episodio.
+                      </p>
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {/* Paso 2: Datos de Admisión */}
-              {pacienteSeleccionado && (
-                <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">
-                      2
-                    </div>
-                    <h2 className="text-xl font-semibold text-gray-800">Datos de Admisión</h2>
+                {error && (
+                  <div className="error-message">
+                    {error}
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Médico Tratante */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Médico Tratante *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.medico_tratante}
-                        onChange={(e) => setFormData({...formData, medico_tratante: e.target.value})}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    {/* Departamento */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Departamento *
-                      </label>
-                      <select
-                        value={formData.departamento}
-                        onChange={(e) => setFormData({...formData, departamento: e.target.value})}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="Medicina Interna">Medicina Interna</option>
-                        <option value="Cirugía General">Cirugía General</option>
-                        <option value="Pediatría">Pediatría</option>
-                        <option value="Ginecología">Ginecología</option>
-                        <option value="Traumatología">Traumatología</option>
-                        <option value="Cardiología">Cardiología</option>
-                        <option value="Neurología">Neurología</option>
-                        <option value="Oncología">Oncología</option>
-                        <option value="UCI">Unidad de Cuidados Intensivos</option>
-                      </select>
-                    </div>
-
-                    {/* Habitación */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Habitación *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.habitacion}
-                        onChange={(e) => setFormData({...formData, habitacion: e.target.value})}
-                        placeholder="Ej: 201"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    {/* Cama */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cama *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.cama}
-                        onChange={(e) => setFormData({...formData, cama: e.target.value})}
-                        placeholder="Ej: A"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    {/* Motivo de Ingreso */}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Motivo de Ingreso *
-                      </label>
-                      <textarea
-                        value={formData.motivo_ingreso}
-                        onChange={(e) => setFormData({...formData, motivo_ingreso: e.target.value})}
-                        placeholder="Describa el motivo del ingreso hospitalario..."
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        rows={3}
-                        required
-                      />
-                    </div>
-
-                    {/* Diagnóstico Inicial */}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Diagnóstico Inicial *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.diagnostico_inicial}
-                        onChange={(e) => setFormData({...formData, diagnostico_inicial: e.target.value})}
-                        placeholder="Ej: Sospecha de infección bacteriana"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Botón de Envío */}
-                  <div className="mt-8 pt-6 border-t border-gray-200">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed font-medium text-lg w-full"
-                    >
-                      {isSubmitting ? (
-                        <span className="flex items-center justify-center gap-3">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          Admitiendo Paciente...
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-center gap-2">
-                          ✅ Admitir Paciente
-                        </span>
-                      )}
-                    </button>
-                    <p className="text-sm text-gray-600 mt-3 text-center">
-                      El paciente será ingresado y redirigido a la página de detalles del episodio.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
-        </div>
-
-        {/* Sidebar - Información y Ayuda */}
-        <div className="space-y-6">
-          {/* Información del Proceso */}
-          <div className="content-card">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">📋 Proceso de Admisión</h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-0.5">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">Seleccionar Paciente</p>
-                  <p className="text-sm text-gray-600">Busca y selecciona un paciente existente</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-0.5">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">Completar Datos</p>
-                  <p className="text-sm text-gray-600">Ingresa la información de admisión</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="bg-purple-100 text-purple-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-0.5">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">Confirmar Ingreso</p>
-                  <p className="text-sm text-gray-600">El paciente será admitido al sistema</p>
-                </div>
-              </div>
+                )}
+              </form>
             </div>
           </div>
 
-          {/* Información Importante */}
-          <div className="content-card">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">⚠️ Información Importante</h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li className="flex items-start gap-2">
-                <span className="text-red-500 mt-0.5">•</span>
-                <span>Verifica que el paciente no tenga episodios activos</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-500 mt-0.5">•</span>
-                <span>Completa todos los campos obligatorios (*)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5">•</span>
-                <span>Asigna habitación y cama disponibles</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-500 mt-0.5">•</span>
-                <span>El diagnóstico puede actualizarse posteriormente</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Departamentos Disponibles */}
-          <div className="content-card">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">🏥 Departamentos</h3>
-            <div className="space-y-2 text-sm">
-              {[
-                'Medicina Interna',
-                'Cirugía General', 
-                'Pediatría',
-                'Ginecología',
-                'Traumatología',
-                'Cardiología',
-                'Neurología',
-                'Oncología',
-                'UCI'
-              ].map((depto) => (
-                <div key={depto} className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-700">{depto}</span>
+          {/* Sidebar - Información y Ayuda */}
+          <div className="sidebar-content">
+            {/* Información del Proceso */}
+            <div className="content-card">
+              <h3>📋 Proceso de Admisión</h3>
+              <div className="info-list">
+                <div className="info-item">
+                  <div className="info-icon info-icon-blue">1</div>
+                  <div className="info-content">
+                    <div className="info-title">Seleccionar Paciente</div>
+                    <div className="info-description">Busca y selecciona un paciente existente</div>
+                  </div>
                 </div>
-              ))}
+                <div className="info-item">
+                  <div className="info-icon info-icon-green">2</div>
+                  <div className="info-content">
+                    <div className="info-title">Completar Datos</div>
+                    <div className="info-description">Ingresa la información de admisión</div>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <div className="info-icon info-icon-purple">3</div>
+                  <div className="info-content">
+                    <div className="info-title">Confirmar Ingreso</div>
+                    <div className="info-description">El paciente será admitido al sistema</div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Acciones Rápidas */}
-          <div className="content-card">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">🚀 Acciones Rápidas</h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => router.push('/pacientes')}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium text-left"
-              >
-                👥 Gestionar Pacientes
-              </button>
-              <button
-                onClick={() => router.push('/hospitalizacion/episodios')}
-                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium text-left"
-              >
-                📋 Ver Episodios
-              </button>
-              <button
-                onClick={() => router.push('/hospitalizacion')}
-                className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium text-left"
-              >
-                🏠 Volver al Dashboard
-              </button>
+            {/* Información Importante */}
+            <div className="content-card">
+              <h3>⚠️ Información Importante</h3>
+              <div className="warning-list">
+                <div className="warning-item">
+                  <span className="warning-dot warning-dot-red"></span>
+                  <span>Verifica que el paciente no tenga episodios activos</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot warning-dot-yellow"></span>
+                  <span>Completa todos los campos obligatorios (*)</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot warning-dot-blue"></span>
+                  <span>Asigna habitación y cama disponibles</span>
+                </div>
+                <div className="warning-item">
+                  <span className="warning-dot warning-dot-green"></span>
+                  <span>El diagnóstico puede actualizarse posteriormente</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Departamentos Disponibles */}
+            <div className="content-card">
+              <h3>🏥 Departamentos</h3>
+              <div className="departments-list">
+                {[
+                  'Medicina Interna',
+                  'Cirugía General', 
+                  'Pediatría',
+                  'Ginecología',
+                  'Traumatología',
+                  'Cardiología',
+                  'Neurología',
+                  'Oncología',
+                  'UCI'
+                ].map((depto) => (
+                  <div key={depto} className="department-item">
+                    <div className="department-dot"></div>
+                    <span>{depto}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Acciones Rápidas */}
+            <div className="content-card">
+              <h3>🚀 Acciones Rápidas</h3>
+              <div className="quick-actions">
+                <Link href="/pacientes" className="btn btn-primary btn-block">
+                  👥 Gestionar Pacientes
+                </Link>
+                <Link href="/hospitalizacion/episodios" className="btn btn-secondary btn-block">
+                  📋 Ver Episodios
+                </Link>
+                <Link href="/hospitalizacion" className="btn btn-warning btn-block">
+                  🏠 Volver al Dashboard
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        /* ESTILOS EXACTAMENTE IGUALES A GESTIÓN DE PACIENTES */
+        .page-container {
+          min-height: 100vh;
+          background-color: #f8fafc;
+          padding: 1rem;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          gap: 1rem;
+        }
+
+        .header-content h1 {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+        }
+
+        .header-content p {
+          color: #6b7280;
+          font-size: 1.125rem;
+        }
+
+        .header-actions {
+          flex-shrink: 0;
+        }
+
+        .page-content {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .content-grid {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .content-card {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .content-card h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 1.5rem;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+
+        .content-card h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 1rem;
+        }
+
+        /* Formulario */
+        .form-container {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .form-section {
+          border: 1px solid #e5e7eb;
+          border-radius: 0.5rem;
+          padding: 1.5rem;
+          background-color: #f9fafb;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .step-number {
+          width: 2rem;
+          height: 2rem;
+          border-radius: 50%;
+          background-color: #3b82f6;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 0.875rem;
+        }
+
+        .form-section:nth-child(2) .step-number {
+          background-color: #10b981;
+        }
+
+        .section-header h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #374151;
+          margin: 0;
+        }
+
+        .form-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .form-group.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .form-group label {
+          font-weight: 500;
+          color: #374151;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+          font-size: 1rem;
+          transition: all 0.2s;
+        }
+
+        .form-group input:focus, 
+        .form-group select:focus, 
+        .form-group textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group textarea {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        /* Mensajes de éxito */
+        .success-message {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background-color: #d1fae5;
+          border: 1px solid #a7f3d0;
+          border-radius: 0.375rem;
+          margin-top: 1rem;
+        }
+
+        .success-icon {
+          font-size: 1.25rem;
+        }
+
+        .success-title {
+          font-weight: 600;
+          color: #065f46;
+          font-size: 1.125rem;
+        }
+
+        .success-details {
+          display: flex;
+          gap: 1rem;
+          font-size: 0.875rem;
+          color: #047857;
+          margin-top: 0.25rem;
+        }
+
+        .success-details strong {
+          color: #064e3b;
+        }
+
+        /* Botones */
+        .btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.375rem;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.875rem;
+          text-decoration: none;
+          display: inline-block;
+          text-align: center;
+        }
+
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .btn-primary {
+          background-color: #3b82f6;
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background-color: #2563eb;
+        }
+
+        .btn-secondary {
+          background-color: #6b7280;
+          color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background-color: #4b5563;
+        }
+
+        .btn-success {
+          background-color: #10b981;
+          color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+          background-color: #059669;
+        }
+
+        .btn-warning {
+          background-color: #f59e0b;
+          color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+          background-color: #d97706;
+        }
+
+        .btn-large {
+          padding: 1rem 2rem;
+          font-size: 1rem;
+        }
+
+        .btn-block {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        .btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+        }
+
+        .form-actions {
+          margin-top: 2rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        }
+
+        .button-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .button-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .loading-spinner-small {
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid transparent;
+          border-top: 2px solid white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        .action-description {
+          color: #6b7280;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+        }
+
+        /* Sidebar Styles */
+        .info-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .info-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .info-icon {
+          width: 1.5rem;
+          height: 1.5rem;
+          border-radius: 0.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          font-weight: bold;
+          flex-shrink: 0;
+          margin-top: 0.125rem;
+        }
+
+        .info-icon-blue { background-color: #dbeafe; color: #1d4ed8; }
+        .info-icon-green { background-color: #d1fae5; color: #065f46; }
+        .info-icon-purple { background-color: #f3e8ff; color: #7e22ce; }
+
+        .info-title {
+          font-weight: 500;
+          color: #374151;
+          font-size: 0.875rem;
+        }
+
+        .info-description {
+          color: #6b7280;
+          font-size: 0.75rem;
+          margin-top: 0.125rem;
+        }
+
+        .warning-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .warning-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+
+        .warning-dot {
+          width: 0.5rem;
+          height: 0.5rem;
+          border-radius: 50%;
+          flex-shrink: 0;
+          margin-top: 0.375rem;
+        }
+
+        .warning-dot-red { background-color: #ef4444; }
+        .warning-dot-yellow { background-color: #f59e0b; }
+        .warning-dot-blue { background-color: #3b82f6; }
+        .warning-dot-green { background-color: #10b981; }
+
+        .departments-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .department-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: #374151;
+        }
+
+        .department-dot {
+          width: 0.375rem;
+          height: 0.375rem;
+          border-radius: 50%;
+          background-color: #3b82f6;
+          flex-shrink: 0;
+        }
+
+        .quick-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        /* Estados */
+        .error-message {
+          background-color: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          padding: 0.75rem;
+          border-radius: 0.375rem;
+          margin-top: 1rem;
+        }
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 50vh;
+          gap: 1rem;
+        }
+
+        .loading-spinner {
+          width: 2rem;
+          height: 2rem;
+          border: 2px solid #e5e7eb;
+          border-top: 2px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+          }
+          
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .form-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+          
+          .action-buttons {
+            flex-direction: column;
+          }
+          
+          .patient-result-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
+          .patient-actions {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .stats-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .modules-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 }
