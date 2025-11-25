@@ -105,7 +105,7 @@ export default function Home() {
               <h3>Módulo de Urgencias</h3>
               <p>Triage y gestión de casos de emergencia</p>
             </a>
-            <a href="/consultas" className="module-card">
+            <a href="/consultas-externas" className="module-card"> {/* ✅ CORREGIDO */}
               <div className="module-icon">🩺</div>
               <h3>Consultas Externas</h3>
               <p>Agenda y gestión de consultas médicas</p>

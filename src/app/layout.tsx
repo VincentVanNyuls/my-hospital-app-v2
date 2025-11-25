@@ -49,7 +49,7 @@ export default function RootLayout({
                   <span className="nav-icon">🚑</span>
                   <span className="nav-text">Urgencias</span>
                 </a>
-                <a href="/consultas" className="nav-item">
+                <a href="/consultas-externas" className="nav-item">
                   <span className="nav-icon">🩺</span>
                   <span className="nav-text">Consultas</span>
                 </a>
@@ -70,7 +70,8 @@ export default function RootLayout({
               </div>
             </aside>
 
-            <div className="main-content">
+            {/* CONTENIDO PRINCIPAL - CORREGIDO */}
+            <main className="main-content">
               {/* Header simplificado integrado */}
               <header className="header">
                 <div className="breadcrumbs">
@@ -90,10 +91,13 @@ export default function RootLayout({
                 </div>
               </header>
 
+              {/* ÁREA DE CONTENIDO - CORREGIDA */}
               <div className="content-area">
-                {children}
+                <div className="content-wrapper">
+                  {children}
+                </div>
               </div>
-            </div>
+            </main>
           </div>
         </AuthProvider>
       </body>
